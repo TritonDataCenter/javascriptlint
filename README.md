@@ -25,25 +25,25 @@ If you want style, see http://github.com/davepacheco/jsstyle.
 Synopsis
 --------
 
- # make install
- ...
- # build/install/jsl
- usage: jsl [options] [files]
- 
- options:
-   -h, --help          show this help message and exit
-   --conf=CONF         set the conf file
-   --profile           turn on hotshot profiling
-   --recurse           recursively search directories on the command line
-   --enable-wildcards  resolve wildcards in the command line
-   --dump              dump this script
-   --unittest          run the python unittests
-   --quiet             minimal output
-   --verbose           verbose output
-   --nologo            suppress version information
-   --nofilelisting     suppress file names
-   --nosummary         suppress lint summary
-   --help:conf         display the default configuration file
+    # make install
+    ...
+    # build/install/jsl
+    usage: jsl [options] [files]
+    
+    options:
+      -h, --help          show this help message and exit
+      --conf=CONF         set the conf file
+      --profile           turn on hotshot profiling
+      --recurse           recursively search directories on the command line
+      --enable-wildcards  resolve wildcards in the command line
+      --dump              dump this script
+      --unittest          run the python unittests
+      --quiet             minimal output
+      --verbose           verbose output
+      --nologo            suppress version information
+      --nofilelisting     suppress file names
+      --nosummary         suppress lint summary
+      --help:conf         display the default configuration file
 
 You can define a configuration file for jsl to enable or disable particular
 warnings and to define global objects (like "window").  See the --help:conf
