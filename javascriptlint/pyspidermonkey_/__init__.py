@@ -14,7 +14,6 @@ def _get_lib_path():
                         build.build_platlib, 'javascriptlint')
 
 sys.path.insert(0, _get_lib_path())
-print sys.path
 try:
     from pyspidermonkey import *
 finally:

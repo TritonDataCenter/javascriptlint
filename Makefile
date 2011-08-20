@@ -1,7 +1,3 @@
-#
-# javascriptlint Makefile for SmartOS zones
-#
-
 BUILDDIR = build
 INSTALLDIRS =					\
 	$(BUILDDIR)/install			\
