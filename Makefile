@@ -41,7 +41,7 @@ clean:
 	-(cd spidermonkey/src && $(MAKE) clean)
 
 install: $(SOFILE) javascriptlint/jsl javascriptlint/jsl | $(INSTALLDIRS)
-	cp javascriptlint/jsl $(SOFILE) install
-	cp javascriptlint/*.py install/javascriptlint
+	cp javascriptlint/jsl $(SOFILE) build/install
+	cp javascriptlint/*.py build/install/javascriptlint
 
 .PHONY: install
