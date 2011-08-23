@@ -50,6 +50,15 @@ warnings and to define global objects (like "window").  See the --help:conf
 option.
 
 
+Supported Platforms
+-------------------
+
+This branch of JSL has been tested on:
+
+- SmartOS (Illumos-based) with Python 2.4
+- Mac OSX 10.6.8 with Python 2.6
+
+
 History
 -------
 
@@ -57,8 +66,8 @@ This version forked from the Subversion repo at revision 302 (2011-04-06).
 I'll happily look at incorporating new patches from upstream, though the
 project has been pretty quiet for the last many months.
 
-The main purpose of this fork is to fix building on Solaris.  Rather than fix
-the complex spidermonkey build system to work on Solaris, I stripped out a
-bunch of unnecessary pieces and Makefiles and wrote a new set of Makefiles.
-The intention is to support building on MacOS X as well, and I'll gladly take
-patches necessary to fix building on Linux.
+The main purpose of this fork is to fix building on Illumos-based systems.
+Rather than fix the complex spidermonkey build system to work on Illumos, I
+stripped out a bunch of unnecessary pieces and Makefiles and wrote a new set of
+Makefiles.  The result now builds on Mac OSX as well, and should build on Linux
+with minimal changes to the Makefile.
