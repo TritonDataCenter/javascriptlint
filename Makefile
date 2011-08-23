@@ -1,3 +1,4 @@
+BUILDOS=$(shell uname -s)
 BUILDDIR = build
 INSTALLDIRS =					\
 	$(BUILDDIR)/install			\
@@ -14,6 +15,11 @@ CPPFLAGS += -DNDEBUG -D_REENTRANT					\
 	-I/opt/local/include/ncurses 					\
 	-Ispidermonkey/src -Ispidermonkey/src/build			\
 	-I/opt/local/include/python2.4
+SOLDFLAGS += -shared
+
+ifeq ($(BUILDOS),Darwin)
+	LD=gcc
+endif
 
 SOFILE = $(BUILDDIR)/pyspidermonkey.so
 
@@ -25,7 +31,7 @@ $(BUILDDIR) $(INSTALLDIRS):
 $(OBJECTS): spidermonkey/src/build/libjs.a spidermonkey/src/build/js_operating_system.h
 
 $(SOFILE): $(OBJECTS)
-	$(LD) -shared $(OBJECTS) -Lspidermonkey/src/build -ljs -o $@
+	$(LD) $(SOLDFLAGS) $(LDFLAGS) $(OBJECTS) -Lspidermonkey/src/build -ljs -o $@
 
 $(BUILDDIR)/%.o: javascriptlint/pyspidermonkey/%.c | $(BUILDDIR)
 	$(CC) -o $@ -c $(CFLAGS) $(CPPFLAGS) $<
