@@ -10,15 +10,24 @@ CSRCS = \
 
 OBJECTS = $(CSRCS:%.c=$(BUILDDIR)/%.o)
 CFLAGS += -fno-strict-aliasing -O -fPIC
-CPPFLAGS += -DNDEBUG -D_REENTRANT					\
-	-I/usr/include -I/opt/local/include/db4				\
-	-I/opt/local/include/ncurses 					\
-	-Ispidermonkey/src -Ispidermonkey/src/build			\
-	-I/opt/local/include/python2.4
+CPPFLAGS += -DNDEBUG -D_REENTRANT		\
+	-Ispidermonkey/src			\
+	-Ispidermonkey/src/build		\
+	-I/usr/include
+
 SOLDFLAGS += -shared
 
 ifeq ($(BUILDOS),Darwin)
+	# Assumes you've done `brew install python` (2.7)
+	CC=gcc
 	LD=gcc
+	CPPFLAGS += -I/usr/local/include/python2.7
+	SOLDFLAGS += -L/usr/local/lib -lpython2.7
+else
+	CPPFLAGS +=					\
+	-I/opt/local/include/db4			\
+	-I/opt/local/include/ncurses 			\
+	-I/opt/local/include/python2.4
 endif
 
 SOFILE = $(BUILDDIR)/pyspidermonkey.so
