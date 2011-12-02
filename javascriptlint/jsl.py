@@ -9,6 +9,7 @@ import unittest
 from optparse import OptionParser
 
 import conf
+import fs
 import htmlparse
 import jsparse
 import lint
@@ -21,7 +22,7 @@ _lint_results = {
 
 def _dump(paths):
     for path in paths:
-        script = util.readfile(path)
+        script = fs.readfile(path)
         jsparse.dump_tree(script)
 
 def _lint(paths, conf_, printpaths):
