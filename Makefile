@@ -10,15 +10,23 @@ CSRCS = \
 
 OBJECTS = $(CSRCS:%.c=$(BUILDDIR)/%.o)
 CFLAGS += -fno-strict-aliasing -O -fPIC
-CPPFLAGS += -DNDEBUG -D_REENTRANT					\
-	-I/usr/include -I/opt/local/include/db4				\
-	-I/opt/local/include/ncurses 					\
-	-Ispidermonkey/src -Ispidermonkey/src/build			\
-	-I/opt/local/include/python2.4
+
 SOLDFLAGS += -shared
+CPPFLAGS += -DNDEBUG -D_REENTRANT					\
+	-Ispidermonkey/src -Ispidermonkey/src/build			\
+	-I/usr/include							\
 
 ifeq ($(BUILDOS),Darwin)
+        CPPFLAGS += -I/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6
+	SOLDFLAGS += -lpython2.6
 	LD=gcc
+	CC=gcc
+else
+	CPPFLAGS += \
+		-I/opt/local/include/db4				\
+		-I/usr/local/include/python2.7				\
+		-I/opt/local/include/ncurses				\
+		-I/opt/local/include/python2.4
 endif
 
 SOFILE = $(BUILDDIR)/pyspidermonkey.so
