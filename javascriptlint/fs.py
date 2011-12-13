@@ -7,6 +7,12 @@ def readfile(path):
     contents = file.read()
     if contents and contents[0] == unicode(codecs.BOM_UTF8, 'utf8'):
         contents = contents[1:]
+
+    if contents.startswith('#!'):
+        idx = contents.find('\n');
+        if idx != -1:
+            contents = '\n' + contents[idx + 1:];
+
     return contents
 
 def normpath(path):
