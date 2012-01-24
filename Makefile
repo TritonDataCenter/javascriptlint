@@ -17,10 +17,12 @@ CPPFLAGS += -DNDEBUG -D_REENTRANT					\
 	-I/usr/include							\
 
 ifeq ($(BUILDOS),Darwin)
-        CPPFLAGS += -I/System/Library/Frameworks/Python.framework/Versions/2.6/include/python2.6
-	SOLDFLAGS += -lpython2.6
-	LD=gcc
-	CC=gcc
+	PY_PREFIX=$(shell python2.6 -c "import sys; sys.stdout.write(sys.prefix)")
+	PY_FRAMEWORK_PREFIX=$(shell python2.6 -c "import sys,os; sys.stdout.write(os.path.normpath(sys.prefix+'/../../..'))")
+	CPPFLAGS += -I$(PY_PREFIX)/include/python2.6
+	SOLDFLAGS += -F$(PY_FRAMEWORK_PREFIX) -framework Python
+	LD=gcc -arch `arch`
+	CC=gcc -arch `arch`
 else
 	CPPFLAGS += \
 		-I/opt/local/include/db4				\
@@ -45,7 +47,7 @@ $(BUILDDIR)/%.o: javascriptlint/pyspidermonkey/%.c | $(BUILDDIR)
 	$(CC) -o $@ -c $(CFLAGS) $(CPPFLAGS) $<
 
 spidermonkey/src/build/libjs.a:
-	(cd spidermonkey/src && $(MAKE))
+	(cd spidermonkey/src && CC="$(CC)" $(MAKE))
 
 spidermonkey/src/build/js_operating_system.h:
 	echo "#define XP_UNIX" > $@
