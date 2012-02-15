@@ -25,11 +25,9 @@ ifeq ($(BUILDOS),Darwin)
 	LD=gcc -arch $(PY_FIRST_ARCH)
 	CC=gcc -arch $(PY_FIRST_ARCH)
 else
+	PY_PREFIX=$(shell python2.6 -c "import sys; sys.stdout.write(sys.prefix)")
 	CPPFLAGS += \
-		-I/opt/local/include/db4				\
-		-I/usr/local/include/python2.7				\
-		-I/opt/local/include/ncurses				\
-		-I/opt/local/include/python2.4
+		-I$(PY_PREFIX)/include/python2.6
 endif
 
 SOFILE = $(BUILDDIR)/pyspidermonkey.so
