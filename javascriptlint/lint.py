@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2.6
 # vim: ts=4 sw=4 expandtab
 import os.path
 import re
