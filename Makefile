@@ -16,6 +16,7 @@ CPPFLAGS += -DNDEBUG -D_REENTRANT					\
 	-Ispidermonkey/src -Ispidermonkey/src/build			\
 	-I/usr/include							\
 
+
 ifeq ($(BUILDOS),Darwin)
 	PY_PREFIX=$(shell python2.6 -c "import sys; sys.stdout.write(sys.prefix)")
 	PY_FIRST_ARCH=$(shell set -x; file `which python2.6` | grep "for architecture" | head -1 | awk '{print $$NF}')
@@ -24,9 +25,11 @@ ifeq ($(BUILDOS),Darwin)
 	LD=gcc -arch $(PY_FIRST_ARCH)
 	CC=gcc -arch $(PY_FIRST_ARCH)
 else
-	PY_PREFIX=$(shell python2.6 -c "import sys; sys.stdout.write(sys.prefix)")
+# This is known to work on 2.6 and 2.7.
+	PY_PREFIX=$(shell python -c "import sys; sys.stdout.write(sys.prefix)")
+	PY_VERSION=$(shell python -c "import sys; import platform; sys.stdout.write(platform.python_version()[0:3])")
 	CPPFLAGS += \
-		-I$(PY_PREFIX)/include/python2.6
+		-I$(PY_PREFIX)/include/python$(PY_VERSION)
 endif
 
 SOFILE = $(BUILDDIR)/pyspidermonkey.so
