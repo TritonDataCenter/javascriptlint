@@ -18,8 +18,8 @@ CPPFLAGS += -DNDEBUG -D_REENTRANT					\
 
 
 ifeq ($(BUILDOS),Darwin)
-	PY_PYTHON=$(shell which python)
-	PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; sys.stdout.write(sys.prefix)")
+	PY_PYTHON=$(shell python -c "import sys; print(sys.executable)")
+	PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; print(sys.prefix)")
 	PY_VERSION=$(shell $(PY_PYTHON) -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
 	# Our best guess at the arch with which python will be launched.
 	PY_ARCH=$(shell uname -m)
@@ -29,8 +29,8 @@ ifeq ($(BUILDOS),Darwin)
 	CC=gcc -arch $(PY_ARCH)
 else
 # This is known to work on 2.6 and 2.7.
-	PY_PYTHON=$(shell which python)
-	PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; sys.stdout.write(sys.prefix)")
+	PY_PYTHON=$(shell python -c "import sys; print(sys.executable)")
+	PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; print(sys.prefix)")
 	PY_VERSION=$(shell $(PY_PYTHON) -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
 	CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
 endif
