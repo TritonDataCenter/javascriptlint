@@ -17,19 +17,18 @@ CPPFLAGS += -DNDEBUG -D_REENTRANT					\
 	-I/usr/include							\
 
 
+PY_PYTHON=$(shell python -c "import sys; print(sys.executable)")
+PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; print(sys.prefix)")
+PY_VERSION=$(shell $(PY_PYTHON) -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
 ifeq ($(BUILDOS),Darwin)
-	PY_PREFIX=$(shell python2.6 -c "import sys; sys.stdout.write(sys.prefix)")
-	PY_FIRST_ARCH=$(shell set -x; file `which python2.6` | grep "for architecture" | head -1 | awk '{print $$NF}')
-	CPPFLAGS += -I$(PY_PREFIX)/include/python2.6
+	PY_ARCH=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "x86_64" or "i386")')
+	CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
 	SOLDFLAGS += $(PY_PREFIX)/Python
-	LD=gcc -arch $(PY_FIRST_ARCH)
-	CC=gcc -arch $(PY_FIRST_ARCH)
+	CC=gcc -arch $(PY_ARCH)
 else
-# This is known to work on 2.6 and 2.7.
-	PY_PREFIX=$(shell python -c "import sys; sys.stdout.write(sys.prefix)")
-	PY_VERSION=$(shell python -c "import sys; import platform; sys.stdout.write(platform.python_version()[0:3])")
-	CPPFLAGS += \
-		-I$(PY_PREFIX)/include/python$(PY_VERSION)
+	PY_BIT=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "64" or "32")')
+	CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
+	CFLAGS += -m$(PY_BIT)
 endif
 
 SOFILE = $(BUILDDIR)/pyspidermonkey.so
@@ -42,13 +41,13 @@ $(BUILDDIR) $(INSTALLDIRS):
 $(OBJECTS): spidermonkey/src/build/libjs.a spidermonkey/src/build/js_operating_system.h
 
 $(SOFILE): $(OBJECTS)
-	$(LD) $(SOLDFLAGS) $(LDFLAGS) $(OBJECTS) -Lspidermonkey/src/build -ljs -o $@
+	$(CC) $(CFLAGS) $(SOLDFLAGS) $(LDFLAGS) $(OBJECTS) -Lspidermonkey/src/build -ljs -o $@
 
 $(BUILDDIR)/%.o: javascriptlint/pyspidermonkey/%.c | $(BUILDDIR)
 	$(CC) -o $@ -c $(CFLAGS) $(CPPFLAGS) $<
 
 spidermonkey/src/build/libjs.a:
-	(cd spidermonkey/src && CC="$(CC)" $(MAKE))
+	(cd spidermonkey/src && CC="$(CC)" CFLAGS="$(CFLAGS)" $(MAKE))
 
 spidermonkey/src/build/js_operating_system.h:
 	echo "#define XP_UNIX" > $@
@@ -58,7 +57,13 @@ clean:
 	-(cd spidermonkey/src && $(MAKE) clean)
 
 install: $(SOFILE) javascriptlint/jsl javascriptlint/jsl | $(INSTALLDIRS)
-	cp javascriptlint/jsl $(SOFILE) build/install
+	cp $(SOFILE) build/install
 	cp javascriptlint/*.py build/install/javascriptlint
+	sed -e "1s:#\!/usr/bin/env python:#\!$(PY_PYTHON):" javascriptlint/jsl >build/install/jsl
+	chmod +x build/install/jsl
+	sed -e "1s:#\!/usr/bin/env python:#\!$(PY_PYTHON):" javascriptlint/jsl.py >build/install/javascriptlint/jsl.py
+	chmod +x build/install/javascriptlint/jsl.py
+	sed -e "1s:#\!/usr/bin/env python:#\!$(PY_PYTHON):" javascriptlint/jsparse.py >build/install/javascriptlint/jsparse.py
+	sed -e "1s:#\!/usr/bin/env python:#\!$(PY_PYTHON):" javascriptlint/lint.py >build/install/javascriptlint/lint.py
 
 .PHONY: install
