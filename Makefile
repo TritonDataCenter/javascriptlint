@@ -24,13 +24,11 @@ ifeq ($(BUILDOS),Darwin)
 	PY_ARCH=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "x86_64" or "i386")')
 	CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
 	SOLDFLAGS += $(PY_PREFIX)/Python
-	LD=gcc -arch $(PY_ARCH)
 	CC=gcc -arch $(PY_ARCH)
 else
 	PY_BIT=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "64" or "32")')
 	CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
-	CC += -m$(PY_BIT)
-	LD=$(CC)
+	CFLAGS += -m$(PY_BIT)
 endif
 
 SOFILE = $(BUILDDIR)/pyspidermonkey.so
@@ -43,7 +41,7 @@ $(BUILDDIR) $(INSTALLDIRS):
 $(OBJECTS): spidermonkey/src/build/libjs.a spidermonkey/src/build/js_operating_system.h
 
 $(SOFILE): $(OBJECTS)
-	$(LD) $(SOLDFLAGS) $(LDFLAGS) $(OBJECTS) -Lspidermonkey/src/build -ljs -o $@
+	$(CC) $(CFLAGS) $(SOLDFLAGS) $(LDFLAGS) $(OBJECTS) -Lspidermonkey/src/build -ljs -o $@
 
 $(BUILDDIR)/%.o: javascriptlint/pyspidermonkey/%.c | $(BUILDDIR)
 	$(CC) -o $@ -c $(CFLAGS) $(CPPFLAGS) $<
