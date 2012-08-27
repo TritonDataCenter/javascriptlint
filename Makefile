@@ -32,7 +32,10 @@ else
 	PY_PYTHON=$(shell python -c "import sys; print(sys.executable)")
 	PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; print(sys.prefix)")
 	PY_VERSION=$(shell $(PY_PYTHON) -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
+  PY_BIT=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "64" or "32")')
 	CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
+  CC += -m$(PY_BIT)
+  LD=$(CC)
 endif
 
 SOFILE = $(BUILDDIR)/pyspidermonkey.so
@@ -51,7 +54,7 @@ $(BUILDDIR)/%.o: javascriptlint/pyspidermonkey/%.c | $(BUILDDIR)
 	$(CC) -o $@ -c $(CFLAGS) $(CPPFLAGS) $<
 
 spidermonkey/src/build/libjs.a:
-	(cd spidermonkey/src && CC="$(CC)" $(MAKE))
+	(cd spidermonkey/src && CC="$(CC)" CFLAGS="$(CFLAGS)" $(MAKE))
 
 spidermonkey/src/build/js_operating_system.h:
 	echo "#define XP_UNIX" > $@
