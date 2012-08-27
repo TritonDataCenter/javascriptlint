@@ -21,21 +21,19 @@ ifeq ($(BUILDOS),Darwin)
 	PY_PYTHON=$(shell python -c "import sys; print(sys.executable)")
 	PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; print(sys.prefix)")
 	PY_VERSION=$(shell $(PY_PYTHON) -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
-	# Our best guess at the arch with which python will be launched.
-	PY_ARCH=$(shell uname -m)
+	PY_ARCH=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "x86_64" or "i386")')
 	CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
 	SOLDFLAGS += $(PY_PREFIX)/Python
 	LD=gcc -arch $(PY_ARCH)
 	CC=gcc -arch $(PY_ARCH)
 else
-# This is known to work on 2.6 and 2.7.
 	PY_PYTHON=$(shell python -c "import sys; print(sys.executable)")
 	PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; print(sys.prefix)")
 	PY_VERSION=$(shell $(PY_PYTHON) -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
-  PY_BIT=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "64" or "32")')
+	PY_BIT=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "64" or "32")')
 	CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
-  CC += -m$(PY_BIT)
-  LD=$(CC)
+	CC += -m$(PY_BIT)
+	LD=$(CC)
 endif
 
 SOFILE = $(BUILDDIR)/pyspidermonkey.so
@@ -72,6 +70,5 @@ install: $(SOFILE) javascriptlint/jsl javascriptlint/jsl | $(INSTALLDIRS)
 	chmod +x build/install/javascriptlint/jsl.py
 	sed -e "1s:#\!/usr/bin/env python:#\!$(PY_PYTHON):" javascriptlint/jsparse.py >build/install/javascriptlint/jsparse.py
 	sed -e "1s:#\!/usr/bin/env python:#\!$(PY_PYTHON):" javascriptlint/lint.py >build/install/javascriptlint/lint.py
-	
 
 .PHONY: install
