@@ -18,18 +18,21 @@ CPPFLAGS += -DNDEBUG -D_REENTRANT					\
 
 
 ifeq ($(BUILDOS),Darwin)
-	PY_PREFIX=$(shell python2.6 -c "import sys; sys.stdout.write(sys.prefix)")
-	PY_FIRST_ARCH=$(shell set -x; file `which python2.6` | grep "for architecture" | head -1 | awk '{print $$NF}')
-	CPPFLAGS += -I$(PY_PREFIX)/include/python2.6
+	PY_PYTHON=$(shell which python)
+	PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; sys.stdout.write(sys.prefix)")
+	PY_VERSION=$(shell $(PY_PYTHON) -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
+	# Our best guess at the arch with which python will be launched.
+	PY_ARCH=$(shell uname -m)
+	CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
 	SOLDFLAGS += $(PY_PREFIX)/Python
-	LD=gcc -arch $(PY_FIRST_ARCH)
-	CC=gcc -arch $(PY_FIRST_ARCH)
+	LD=gcc -arch $(PY_ARCH)
+	CC=gcc -arch $(PY_ARCH)
 else
 # This is known to work on 2.6 and 2.7.
-	PY_PREFIX=$(shell python -c "import sys; sys.stdout.write(sys.prefix)")
-	PY_VERSION=$(shell python -c "import sys; import platform; sys.stdout.write(platform.python_version()[0:3])")
-	CPPFLAGS += \
-		-I$(PY_PREFIX)/include/python$(PY_VERSION)
+	PY_PYTHON=$(shell which python)
+	PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; sys.stdout.write(sys.prefix)")
+	PY_VERSION=$(shell $(PY_PYTHON) -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
+	CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
 endif
 
 SOFILE = $(BUILDDIR)/pyspidermonkey.so
@@ -58,7 +61,14 @@ clean:
 	-(cd spidermonkey/src && $(MAKE) clean)
 
 install: $(SOFILE) javascriptlint/jsl javascriptlint/jsl | $(INSTALLDIRS)
-	cp javascriptlint/jsl $(SOFILE) build/install
+	cp $(SOFILE) build/install
 	cp javascriptlint/*.py build/install/javascriptlint
+	sed -e "1s:#\!/usr/bin/env python:#\!$(PY_PYTHON):" javascriptlint/jsl >build/install/jsl
+	chmod +x build/install/jsl
+	sed -e "1s:#\!/usr/bin/env python:#\!$(PY_PYTHON):" javascriptlint/jsl.py >build/install/javascriptlint/jsl.py
+	chmod +x build/install/javascriptlint/jsl.py
+	sed -e "1s:#\!/usr/bin/env python:#\!$(PY_PYTHON):" javascriptlint/jsparse.py >build/install/javascriptlint/jsparse.py
+	sed -e "1s:#\!/usr/bin/env python:#\!$(PY_PYTHON):" javascriptlint/lint.py >build/install/javascriptlint/lint.py
+	
 
 .PHONY: install
