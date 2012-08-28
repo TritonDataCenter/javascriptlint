@@ -22,15 +22,14 @@ PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; print(sys.prefix)")
 PY_VERSION=$(shell $(PY_PYTHON) -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
 ifeq ($(BUILDOS),Darwin)
 	PY_ARCH=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "x86_64" or "i386")')
-	CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
 	SOLDFLAGS += $(PY_PREFIX)/Python
 	CC=gcc -arch $(PY_ARCH)
 else
 	PY_BIT=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "64" or "32")')
-	CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
 	CFLAGS += -m$(PY_BIT)
 endif
 
+CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
 SOFILE = $(BUILDDIR)/pyspidermonkey.so
 
 all: $(SOFILE)
