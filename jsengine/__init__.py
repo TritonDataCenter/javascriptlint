@@ -1,7 +1,7 @@
 # vim: sw=4 ts=4 et
 
 _MESSAGES = (
-    'eof',
+    'unexpected_eof',
     'semi_before_stmnt',
     'syntax_error',
     'unterminated_comment',

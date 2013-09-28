@@ -59,5 +59,5 @@ function useless_comparison() {
     if (i == 3 == i) /*warning:useless_comparison*/
         return;
     if (i == 3 == j == 3) /*warning:useless_comparison*/
-        return;}
+        return;
 }

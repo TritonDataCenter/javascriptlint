@@ -781,7 +781,7 @@ def _statement(t):
     elif x.tok == tok.TRY:
         return _try_statement(t)
     elif x.tok == tok.EOF:
-        raise JSSyntaxError(x.startpos, 'eof')
+        raise JSSyntaxError(x.startpos, 'unexpected_eof')
     elif x.tok == tok.FUNCTION:
         return _function_declaration(t, op.CLOSURE) #TODO: warn, since this is not reliable
         
@@ -844,7 +844,7 @@ def is_compilable_unit(script, jsversion):
     try:
         parsestring(script)
     except JSSyntaxError as error:
-        return error.msg not in ('eof', 'unterminated_comment')
+        return error.msg not in ('unexpected_eof', 'unterminated_comment')
     return True
 
 class TestParser(unittest.TestCase):

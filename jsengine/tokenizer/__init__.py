@@ -176,7 +176,7 @@ class TokenStream:
         if self._pos < len(self._content):
             self._pos += 1
             return self._content[self._pos - 1]
-        raise JSSyntaxError(self.getpos(-1), 'eof')
+        raise JSSyntaxError(self.getpos(-1), 'unexpected_eof')
 
     def readif(self, len_, seq):
         s = self.peekif(len_, seq)
