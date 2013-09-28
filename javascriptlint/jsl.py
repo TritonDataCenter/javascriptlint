@@ -20,17 +20,17 @@ _lint_results = {
     'errors': 0
 }
 
-def _dump(paths):
+def _dump(paths, encoding):
     for path in paths:
-        script = fs.readfile(path)
+        script = fs.readfile(path, encoding)
         jsparse.dump_tree(script)
 
-def _lint(paths, conf_, printpaths):
+def _lint(paths, conf_, printpaths, encoding):
     def lint_error(path, line, col, errname, errdesc):
         _lint_results['warnings'] = _lint_results['warnings'] + 1
         print util.format_error(conf_['output-format'], path, line, col,
                                       errname, errdesc)
-    lint.lint_files(paths, lint_error, conf=conf_, printpaths=printpaths)
+    lint.lint_files(paths, lint_error, encoding, conf=conf_, printpaths=printpaths)
 
 def _resolve_paths(path, recurse):
     # Build a list of directories
@@ -97,6 +97,8 @@ def main():
         help="suppress lint summary")
     add("--help:conf", dest="showdefaultconf", action="store_true", default=False,
         help="display the default configuration file")
+    add("--encoding", dest="encoding", metavar="ENCODING", default="utf-8",
+        help="encoding for input file(s)")
     parser.set_defaults(verbosity=1)
     options, args = parser.parse_args()
 
@@ -138,9 +140,9 @@ def main():
         else:
             paths.append(arg)
     if options.dump:
-        profile_func(_dump, paths)
+        profile_func(_dump, paths, options.encoding)
     else:
-        profile_func(_lint, paths, conf_, options.printlisting)
+        profile_func(_lint, paths, conf_, options.printlisting, options.encoding)
 
     if options.printsummary:
         print '\n%i error(s), %i warnings(s)' % (_lint_results['errors'],

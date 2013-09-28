@@ -61,7 +61,7 @@ def _testfile(path):
         else:
             unexpected_warnings.append(warning + (errdesc,))
 
-    javascriptlint.lint.lint_files([path], lint_error, conf=conf)
+    javascriptlint.lint.lint_files([path], lint_error, 'utf-8', conf=conf)
 
     errors = []
     if expected_warnings:

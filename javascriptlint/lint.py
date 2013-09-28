@@ -286,14 +286,14 @@ def _findhtmlscripts(contents, default_version):
         else:
             assert False, 'Invalid internal tag type %s' % tag['type']
 
-def lint_files(paths, lint_error, conf=conf.Conf(), printpaths=True):
-    def lint_file(path, kind, jsversion):
+def lint_files(paths, lint_error, encoding, conf=conf.Conf(), printpaths=True):
+    def lint_file(path, kind, jsversion, encoding):
         def import_script(import_path, jsversion):
             # The user can specify paths using backslashes (such as when
             # linting Windows scripts on a posix environment.
             import_path = import_path.replace('\\', os.sep)
             import_path = os.path.join(os.path.dirname(path), import_path)
-            return lint_file(import_path, 'js', jsversion)
+            return lint_file(import_path, 'js', jsversion, encoding)
         def _lint_error(*args):
             return lint_error(normpath, *args)
 
@@ -302,7 +302,7 @@ def lint_files(paths, lint_error, conf=conf.Conf(), printpaths=True):
             return lint_cache[normpath]
         if printpaths:
             print normpath
-        contents = fs.readfile(path)
+        contents = fs.readfile(path, encoding)
         lint_cache[normpath] = _Script()
 
         script_parts = []
@@ -334,9 +334,9 @@ def lint_files(paths, lint_error, conf=conf.Conf(), printpaths=True):
     for path in paths:
         ext = os.path.splitext(path)[1]
         if ext.lower() in ['.htm', '.html']:
-            lint_file(path, 'html', None)
+            lint_file(path, 'html', None, encoding)
         else:
-            lint_file(path, 'js', None)
+            lint_file(path, 'js', None, encoding)
 
 def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
                       ignores, report_native, report_lint, import_callback):

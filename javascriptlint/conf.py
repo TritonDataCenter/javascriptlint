@@ -187,7 +187,7 @@ class Conf:
 
     def loadfile(self, path):
         path = os.path.abspath(path)
-        conf = fs.readfile(path)
+        conf = fs.readfile(path, 'utf-8')
         try:
             self.loadtext(conf, dir=os.path.dirname(path))
         except ConfError, error:
