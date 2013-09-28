@@ -100,6 +100,11 @@ def main():
             except TestError, error:
                 haderrors = True
                 print error
+
+    if haderrors:
+        print '\nOne or more tests failed!'
+    else:
+        print '\nAll tests passed successfully.'
     sys.exit(haderrors)
 
 if __name__  == '__main__':
