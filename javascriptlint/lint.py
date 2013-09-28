@@ -12,7 +12,8 @@ import warnings
 import unittest
 import util
 
-from spidermonkey import tok, op
+from jsengine.parser import kind as tok
+from jsengine.parser import op
 
 _newline_kinds = (
     'eof', 'comma', 'dot', 'semi', 'colon', 'lc', 'rc', 'lp', 'rb', 'assign',
@@ -98,6 +99,7 @@ class Scope:
     def add_declaration(self, name, node, type_):
         assert type_ in ('arg', 'function', 'var'), \
             'Unrecognized identifier type: %s' % type_
+        assert isinstance(name, basestring)
         self._identifiers[name] = {
             'node': node,
             'type': type_
@@ -341,10 +343,10 @@ def lint_files(paths, lint_error, conf=conf.Conf(), printpaths=True):
 
 def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
                       ignores, report_native, report_lint, import_callback):
-    def parse_error(row, col, msg):
+    def parse_error(row, col, msg, msg_args):
         if not msg in ('anon_no_return_value', 'no_return_value',
                        'redeclared_var', 'var_hides_arg'):
-            parse_errors.append((jsparse.NodePos(row, col), msg))
+            parse_errors.append((jsparse.NodePos(row, col), msg, msg_args))
 
     def report(node, errname, pos=None, **errargs):
         if errname == 'empty_statement' and node.kind == tok.LC:
@@ -413,8 +415,8 @@ def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
     root = jsparse.parse(script, jsversion, parse_error, scriptpos)
     if not root:
         # Report errors and quit.
-        for pos, msg in parse_errors:
-            report_native(pos, msg)
+        for pos, msg, msg_args in parse_errors:
+            report_native(pos, msg, msg_args)
         return
 
     comments = jsparse.filtercomments(possible_comments, node_positions, root)
@@ -459,7 +461,7 @@ def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
             elif keyword == 'pass':
                 passes.append(node)
         else:
-            if comment.opcode == 'c_comment':
+            if comment.opcode == op.C_COMMENT:
                 # Look for nested C-style comments.
                 nested_comment = comment.atom.find('/*')
                 if nested_comment < 0 and comment.atom.endswith('/'):
@@ -516,9 +518,9 @@ def _lint_script_parts(script_parts, script_cache, lint_error, conf, import_call
         errdesc = warnings.format_error(errname, **errargs)
         _report(pos or node.start_pos(), errname, errdesc, True)
 
-    def report_native(pos, errname):
-        # TODO: Format the error.
-        _report(pos, errname, errname, False)
+    def report_native(pos, errname, errargs):
+        errdesc = warnings.format_error(errname, **errargs)
+        _report(pos, errname, errdesc, False)
 
     def _report(pos, errname, errdesc, require_key):
         try:
@@ -583,7 +585,7 @@ def _warn_or_declare(scope, name, type_, node, report):
     if other and parent_scope == scope:
         # Only warn about duplications in this scope.
         # Other scopes will be checked later.
-        if other.kind == tok.FUNCTION and name in other.fn_args:
+        if other.kind == tok.NAME and other.opcode == op.ARGNAME:
             report(node, 'var_hides_arg', name=name)
         else:
             report(node, 'redeclared_var', name=name)
@@ -614,7 +616,9 @@ def _get_scope_checks(scope, report):
                 _warn_or_declare(scopes[-1], node.fn_name, 'function', node, report)
             self._push_scope(node)
             for var_name in node.fn_args:
-                scopes[-1].add_declaration(var_name, node, 'arg')
+                if scopes[-1].get_identifier(var_name.atom):
+                    report(var_name, 'duplicate_formal', name=var_name.atom)
+                scopes[-1].add_declaration(var_name.atom, var_name, 'arg')
 
         @visitation.visit('push', tok.LEXICALSCOPE, tok.WITH)
         def _push_scope(self, node):

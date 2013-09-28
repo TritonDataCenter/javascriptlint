@@ -16,7 +16,7 @@ function want_assign_or_call() {
 
     function() { /*warning:want_assign_or_call*/
         return 42;
-    }
+    };
 
     delete a;
 

@@ -21,9 +21,10 @@ import types
 import util
 import visitation
 
-from spidermonkey import tok, op
+from jsengine.parser import kind as tok
+from jsengine.parser import op
 
-_ALL_TOKENS = tuple(filter(lambda x: x != tok.EOF, tok.__dict__.values()))
+_ALL_TOKENS = tok.__dict__.values()
 
 def _get_assigned_lambda(node):
     """ Given a node "x = function() {}", returns "function() {}".
@@ -53,6 +54,7 @@ warnings = {
     'use_of_label': 'use of label',
     'misplaced_regex': 'regular expressions should be preceded by a left parenthesis, assignment, colon, or comma',
     'assign_to_function_call': 'assignment to a function call',
+    'equal_as_assign': 'test for equality (==) mistyped as assignment (=)?',
     'ambiguous_else_stmt': 'the else statement could be matched with one of multiple if statements (use curly braces to indicate intent',
     'block_without_braces': 'block statement without curly braces',
     'ambiguous_nested_stmt': 'block statements containing block statements should use curly braces to resolve ambiguity',
@@ -70,6 +72,7 @@ warnings = {
     'leading_decimal_point': 'leading decimal point may indicate a number or an object member',
     'trailing_decimal_point': 'trailing decimal point may indicate a number or an object member',
     'octal_number': 'leading zeros make an octal number',
+    'trailing_comma': 'extra comma is not recommended in object initializers',
     'trailing_comma_in_array': 'extra comma is not recommended in array initializers',
     'useless_quotes': 'the quotation marks are unnecessary',
     'mismatch_ctrl_comments': 'mismatched control comment; "ignore" and "end" control comments must have a one-to-one correspondence',
@@ -99,8 +102,20 @@ warnings = {
     'incorrect_version': 'Expected /*jsl:content-type*/ control comment. The script was parsed with the wrong version.',
 }
 
+errors = {
+    'e4x_deprecated': 'e4x is deprecated',
+    'semi_before_stmnt': 'missing semicolon before statement',
+    'syntax_error': 'syntax error',
+    'expected_tok': 'expected token: {token}',
+    'unexpected_char': 'unexpected character: {char}',
+}
+
 def format_error(errname, **errargs):
-    errdesc = warnings[errname]
+    if errname in errors:
+       errdesc = errors[errname]
+    else:
+       errdesc = warnings[errname]
+
     try:
         errdesc = re.sub(r"{(\w+)}", lambda match: errargs[match.group(1)], errdesc)
     except (TypeError, KeyError):
@@ -295,7 +310,16 @@ def misplaced_regex(node):
 
 @lookfor(tok.ASSIGN)
 def assign_to_function_call(node):
-    if node.kids[0].kind == tok.LP:
+    kid = node.kids[0]
+    # Unpack parens.
+    while kid.kind == tok.RP:
+       kid, = kid.kids
+    if kid.kind == tok.LP:
+        raise LintWarning, node
+
+@lookfor(tok.ASSIGN)
+def equal_as_assign(node):
+    if not node.parent.kind in (tok.SEMI, tok.RESERVED, tok.RP, tok.COMMA):
         raise LintWarning, node
 
 @lookfor(tok.IF)
@@ -490,6 +514,11 @@ _octal_regexp = re.compile('^0[0-9]')
 @lookfor(tok.NUMBER)
 def octal_number(node):
     if _octal_regexp.match(node.atom):
+        raise LintWarning, node
+
+@lookfor(tok.RC)
+def trailing_comma(node):
+    if node.end_comma:
         raise LintWarning, node
 
 @lookfor(tok.RB)

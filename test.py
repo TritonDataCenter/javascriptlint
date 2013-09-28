@@ -59,7 +59,7 @@ def _testfile(path):
         if warning in expected_warnings:
             expected_warnings.remove(warning)
         else:
-            unexpected_warnings.append(warning)
+            unexpected_warnings.append(warning + (errdesc,))
 
     javascriptlint.lint.lint_files([path], lint_error, conf=conf)
 
@@ -70,8 +70,8 @@ def _testfile(path):
             errors.append('\tline %i: %s' % (line+1, warning))
     if unexpected_warnings:
         errors.append('Unexpected warnings:')
-        for line, warning in unexpected_warnings:
-            errors.append('\tline %i: %s' % (line+1, warning))
+        for line, warning, errdesc in unexpected_warnings:
+            errors.append('\tline %i: %s/%s' % (line+1, warning, errdesc))
     if errors:
         raise TestError, '\n'.join(errors)
 
