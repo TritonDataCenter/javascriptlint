@@ -29,5 +29,15 @@ function control_comments() {
 
     /* illegal - don't forget to end */
     /*jsl:ignore*/ /*warning:mismatch_ctrl_comments*/
+
+    // The following are illegal. Make sure jsl doesn't choke.
+    /*jsl:*/ /*warning:jsl_cc_not_understood*/
+    if (a)
+    {
+       /*jsl:pass */
+    }
+    /*jsl:ignoreal*/ /*warning:jsl_cc_not_understood*/
+    /*jsl:declarebogus*/ /*warning:jsl_cc_not_understood*/
+    /*jsl:declare bogus */
 }
 

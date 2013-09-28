@@ -56,28 +56,27 @@ def _parse_control_comment(comment):
         control_comment = atom[1:-1]
     else:
         return None
+    control_comment = control_comment.lower().rstrip()
 
-    control_comments = {
-        'ignoreall': (False),
-        'ignore': (False),
-        'end': (False),
-        'option explicit': (False),
-        'import': (True),
-        'fallthru': (False),
-        'pass': (False),
-        'declare': (True),
-        'unused': (True),
-        'content-type': (True),
-    }
-    if control_comment.lower() in control_comments:
-        keyword = control_comment.lower()
-    else:
-        keyword = control_comment.lower().split()[0]
-        if not keyword in control_comments:
-            return None
-
-    parms = control_comment[len(keyword):].strip()
-    return (comment, keyword, parms)
+    keywords = (
+        'ignoreall',
+        'ignore',
+        'end',
+        'option explicit',
+        'import',
+        'fallthru',
+        'pass',
+        'declare',
+        'unused',
+        'content-type',
+    )
+    for keyword in keywords:
+        # The keyword must either match or be separated by a space.
+        if control_comment == keyword or \
+            (control_comment.startswith(keyword) and \
+             control_comment[len(keyword)].isspace()):
+            parms = control_comment[len(keyword):].strip()
+            return (comment, keyword, parms.strip())
 
 class Scope:
     """ Outer-level scopes will never be associated with a node.
