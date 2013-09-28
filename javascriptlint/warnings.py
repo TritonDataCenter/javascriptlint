@@ -100,6 +100,7 @@ warnings = {
     'anon_no_return_value': 'anonymous function does not always return value',
     'unsupported_version': 'JavaScript {version} is not supported',
     'incorrect_version': 'Expected /*jsl:content-type*/ control comment. The script was parsed with the wrong version.',
+    'for_in_missing_identifier': 'for..in should have identifier on left side',
 }
 
 errors = {
@@ -586,6 +587,13 @@ def no_return_value(node):
 def anon_no_return_value(node):
     if not node.fn_name:
         _check_return_value(node)
+
+@lookfor((tok.FOR, op.FORIN))
+def for_in_missing_identifier(node):
+    assert node.kids[0].kind == tok.IN
+    left, right = node.kids[0].kids
+    if not left.kind in (tok.VAR, tok.NAME):
+        raise LintWarning, left
 
 @lookfor()
 def mismatch_ctrl_comments(node):
