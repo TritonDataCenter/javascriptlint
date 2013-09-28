@@ -52,4 +52,12 @@ function useless_comparison() {
     if (useless_comparison() == useless_comparison()) {
         return;
     }
+    
+    // Test multiple comparisons.
+    if (i == i == 3) /*warning:useless_comparison*/
+        return;
+    if (i == 3 == i) /*warning:useless_comparison*/
+        return;
+    if (i == 3 == j == 3) /*warning:useless_comparison*/
+        return;}
 }

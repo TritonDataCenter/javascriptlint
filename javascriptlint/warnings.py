@@ -14,6 +14,7 @@ For example:
         if questionable:
             raise LintWarning, node
 """
+import itertools
 import re
 import sys
 import types
@@ -287,9 +288,9 @@ def with_statement(node):
 
 @lookfor(tok.EQOP,tok.RELOP)
 def useless_comparison(node):
-    lvalue, rvalue = node.kids
-    if lvalue.is_equivalent(rvalue):
-        raise LintWarning, node
+    for lvalue, rvalue in itertools.combinations(node.kids, 2):
+        if lvalue.is_equivalent(rvalue):
+            raise LintWarning, node
 
 @lookfor((tok.COLON, op.NAME))
 def use_of_label(node):
