@@ -202,6 +202,8 @@ def _get_exit_points(node):
             exit_points.add(None)
     elif node.kind == tok.BREAK:
         exit_points = set([node])
+    elif node.kind == tok.CONTINUE:
+        exit_points = set([node])
     elif node.kind == tok.WITH:
         exit_points = _get_exit_points(node.kids[-1])
     elif node.kind == tok.RETURN:

@@ -102,5 +102,18 @@ function missing_break() {
         break;
     }
 
+    for (;;) {
+        switch(i) {
+        case 1:
+            i++;
+            continue;
+        case 2:
+            if (i)
+                continue;
+        default: /*warning:missing_break*/
+            break;
+        }
+    }
+
     return "";
 }
