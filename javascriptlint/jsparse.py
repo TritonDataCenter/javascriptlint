@@ -119,7 +119,7 @@ def _dump_node(node, depth=0):
             _dump_node(node, depth+1)
 
 def dump_tree(script):
-    def error_callback(line, col, msg):
+    def error_callback(line, col, msg, msg_args):
         print '(%i, %i): %s', (line, col, msg)
     node = parse(script, None, error_callback)
     _dump_node(node)
