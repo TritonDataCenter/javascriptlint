@@ -60,4 +60,10 @@ function useless_comparison() {
         return;
     if (i == 3 == j == 3) /*warning:useless_comparison*/
         return;
+
+    // Test bases
+    if (010 == 8) /*warning:useless_comparison*/ /*warning:octal_number*/
+        return;
+    if (0xA == 10) /*warning:useless_comparison*/
+        return;
 }

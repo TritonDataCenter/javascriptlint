@@ -378,26 +378,31 @@ class Tokenizer:
             s = c # TODO
             stream.watch_reads()
             if c == '0' and stream.readif(1, 'xX'):
+                # Hex
                 while stream.readif(1, _HEX_DIGITS):
                     pass
-                return Token(tok.NUMBER, atom=stream.get_watched_reads())
-            
-            if c != '.':
+            elif c == '0' and stream.readif(1, _DIGITS):
+                # Octal
                 while stream.readif(1, _DIGITS):
                     pass
-                stream.readif(1, '.')
+            else:
+                # Decimal
+                if c != '.':
+                    while stream.readif(1, _DIGITS):
+                        pass
+                    stream.readif(1, '.')
 
-            while stream.readif(1, _DIGITS):
-                pass
-
-            if stream.readif(1, 'eE'):
-                stream.readif(1, '+-')
-                stream.require(_DIGITS)
                 while stream.readif(1, _DIGITS):
                     pass
 
-            if stream.peekchr(_IDENT):
-                return Token(tok.ERROR)
+                if stream.readif(1, 'eE'):
+                    stream.readif(1, '+-')
+                    stream.require(_DIGITS)
+                    while stream.readif(1, _DIGITS):
+                        pass
+
+                if stream.peekchr(_IDENT):
+                    return Token(tok.ERROR)
 
             atom = s + stream.get_watched_reads()
             return Token(tok.NUMBER, atom=atom)

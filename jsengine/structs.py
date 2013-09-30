@@ -125,7 +125,12 @@ class ParseNode:
         else:
             assert fn_args is None
         if self.kind == kind.NUMBER:
-            self.dval = float(self.atom)
+            if self.atom.lower().startswith('0x'):
+               self.dval = int(self.atom, 16)
+            elif self.atom.startswith('0') and self.atom.isdigit():
+               self.dval = int(self.atom, 8)
+            else:
+               self.dval = float(self.atom)
 
     def start_pos(self):
         return self.startpos
