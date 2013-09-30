@@ -324,6 +324,10 @@ def assign_to_function_call(node):
 
 @lookfor(tok.ASSIGN)
 def equal_as_assign(node):
+    # Allow in VAR statements.
+    if node.parent.parent and node.parent.parent.kind == tok.VAR:
+        return
+
     if not node.parent.kind in (tok.SEMI, tok.RESERVED, tok.RP, tok.COMMA,
                                 tok.ASSIGN):
         raise LintWarning, node

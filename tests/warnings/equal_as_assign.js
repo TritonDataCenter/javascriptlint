@@ -7,4 +7,7 @@ function equal_as_assign() {
 
     var c;
     a = b = c;
+
+    var x, y, z;
+    var w = x = y = z;
 }
