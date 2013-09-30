@@ -609,7 +609,7 @@ def _get_scope_checks(scope, report):
 
         @visitation.visit('push', tok.FUNCTION)
         def _push_func(self, node):
-            if node.fn_name:
+            if node.opcode != op.CLOSURE and node.fn_name:
                 _warn_or_declare(scopes[-1], node.fn_name, 'function', node, report)
             self._push_scope(node)
             for var_name in node.fn_args:

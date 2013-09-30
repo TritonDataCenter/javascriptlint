@@ -162,10 +162,8 @@ def _function_expression(t, named_opcode):
     fn_body_endpos = t.expect(tok.RBRACE).endpos
     fn_body = ParseNode(kind.LC, None, fn_body_startpos,
                         fn_body_endpos, None, kids)
-    return ParseNode(kind.FUNCTION,
-            op.ANONFUNOBJ if fn_name is None else op.NAMEDFUNOBJ,
-            startpos, fn_body.endpos,
-            fn_name, [fn_body], fn_args=fn_args)
+    return ParseNode(kind.FUNCTION, opcode, startpos, fn_body.endpos,
+                     fn_name, [fn_body], fn_args=fn_args)
 
 def _argument_list(t):
     args = []
