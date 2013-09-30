@@ -48,8 +48,8 @@ def _find_functions(node):
 
 def _parse_control_comment(comment):
     """ Returns None or (keyword, parms) """
-    comment_atom = comment.atom.lower().strip()
-    if comment_atom.startswith('jsl:'):
+    comment_atom = comment.atom.strip()
+    if comment_atom.lower().startswith('jsl:'):
         control_comment = comment_atom[4:]
     elif comment_atom.startswith('@') and comment_atom.endswith('@'):
         control_comment = comment_atom[1:-1]
@@ -70,8 +70,8 @@ def _parse_control_comment(comment):
     )
     for keyword in keywords:
         # The keyword must either match or be separated by a space.
-        if control_comment == keyword or \
-            (control_comment.startswith(keyword) and \
+        if control_comment.lower() == keyword or \
+            (control_comment.lower().startswith(keyword) and \
              control_comment[len(keyword)].isspace()):
             parms = control_comment[len(keyword):].strip()
             return (comment, keyword, parms.strip())

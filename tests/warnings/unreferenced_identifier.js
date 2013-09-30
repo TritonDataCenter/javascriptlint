@@ -98,5 +98,9 @@ function unreferenced_identifier() {
         }
     }
 
+    function test_unused_camel_case(CamelCaseParm) { /*warning:unreferenced_function*/
+        /*jsl:unused CamelCaseParm*/
+    }
+
     return get_callback(42);
 }
