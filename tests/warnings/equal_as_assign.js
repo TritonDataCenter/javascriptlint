@@ -4,6 +4,9 @@ function equal_as_assign() {
     while (a = b) { /*warning:equal_as_assign*/
         a++;
     }
+    while (a -= b) {
+        a--;
+    }
 
     var c;
     a = b = c;

@@ -322,7 +322,7 @@ def assign_to_function_call(node):
     if kid.kind == tok.LP:
         raise LintWarning, node
 
-@lookfor(tok.ASSIGN)
+@lookfor((tok.ASSIGN, None))
 def equal_as_assign(node):
     # Allow in VAR statements.
     if node.parent.parent and node.parent.parent.kind == tok.VAR:
