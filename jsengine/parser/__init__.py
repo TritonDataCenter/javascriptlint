@@ -638,7 +638,7 @@ def _return_statement(t):
     endtoken = t.expect(tok.RETURN)
     startpos = endtoken.startpos
     
-    if t.peek_sameline().tok not in (tok.EOF, tok.EOL, tok.SEMI):
+    if t.peek_sameline().tok not in (tok.EOF, tok.EOL, tok.SEMI, tok.RBRACE):
         expr = _expression(t, True)
         endtoken = expr
     else:
