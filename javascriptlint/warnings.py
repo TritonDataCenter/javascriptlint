@@ -324,7 +324,8 @@ def assign_to_function_call(node):
 
 @lookfor(tok.ASSIGN)
 def equal_as_assign(node):
-    if not node.parent.kind in (tok.SEMI, tok.RESERVED, tok.RP, tok.COMMA):
+    if not node.parent.kind in (tok.SEMI, tok.RESERVED, tok.RP, tok.COMMA,
+                                tok.ASSIGN):
         raise LintWarning, node
 
 @lookfor(tok.IF)
