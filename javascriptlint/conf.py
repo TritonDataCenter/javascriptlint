@@ -6,12 +6,18 @@ import fs
 import util
 import warnings
 
+_DISABLED_WARNINGS = (
+   'block_without_braces',
+   'function_name_missing',
+   'function_name_mismatch',
+)
+
 def _getwarningsconf():
     lines = []
     for name in sorted(warnings.warnings.keys()):
         message = warnings.warnings[name]
         sign = '+'
-        if name == 'block_without_braces':
+        if name in _DISABLED_WARNINGS:
             sign = '-'
         assert len(name) < 29
         lines.append(sign + name.ljust(29) + '# ' + message)
@@ -183,7 +189,8 @@ class Conf:
         }
         for name in warnings.warnings:
             self._settings[name] = BooleanSetting(True)
-        self.loadline('-block_without_braces')
+        for warning in _DISABLED_WARNINGS:
+           self.loadline('-%s' % warning)
 
     def loadfile(self, path):
         path = os.path.abspath(path)

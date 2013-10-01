@@ -62,7 +62,7 @@ function option_explicit(parm) {
 
     // This should be undeclared because this is an expression,
     // not a declaration.
-    (function func_expr() { /*warning:want_assign_or_call*/
+    (function func_expr() { /*warning:misplaced_function*/ /*warning:want_assign_or_call*/
         return 10;
     });
     j = func_expr(); /*warning:undeclared_identifier*/

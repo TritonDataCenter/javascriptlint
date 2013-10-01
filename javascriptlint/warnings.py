@@ -102,6 +102,9 @@ warnings = {
     'unsupported_version': 'JavaScript {version} is not supported',
     'incorrect_version': 'Expected /*jsl:content-type*/ control comment. The script was parsed with the wrong version.',
     'for_in_missing_identifier': 'for..in should have identifier on left side',
+    'misplaced_function': 'unconventional use of function expression',
+    'function_name_missing': 'anonymous function should be named to match property name {name}',
+    'function_name_mismatch': 'function name {fn_name} does not match property name {prop_name}',
 }
 
 errors = {
@@ -603,6 +606,87 @@ def for_in_missing_identifier(node):
     left, right = node.kids[0].kids
     if not left.kind in (tok.VAR, tok.NAME):
         raise LintWarning, left
+
+@lookfor(tok.FUNCTION)
+def misplaced_function(node):
+    # Ignore function statements.
+    if node.opcode in (None, op.CLOSURE):
+        return
+
+    # Ignore parens.
+    parent = node.parent
+    while parent.kind == tok.RP:
+        parent = parent.parent
+
+    # Allow x = x || ...
+    if parent.kind == tok.OR and len(parent.kids) == 2 and \
+            node is parent.kids[-1]:
+        parent = parent.parent
+
+    if parent.kind == tok.NAME and parent.opcode == op.SETNAME:
+        return # Allow in var statements
+    if parent.kind == tok.ASSIGN and parent.opcode == op.NOP:
+        return # Allow in assigns
+    if parent.kind == tok.COLON and parent.parent.kind == tok.RC:
+        return # Allow in object literals
+    if parent.kind == tok.LP and parent.opcode in (op.CALL, op.SETCALL):
+        return # Allow in parameters
+    if parent.kind == tok.RETURN:
+        return # Allow for return values
+    if parent.kind == tok.NEW:
+        return # Allow as constructors
+    raise LintWarning, node
+
+def _get_expected_function_name(node):
+    # Ignore function statements.
+    if node.opcode in (None, op.CLOSURE):
+        return
+
+    # Ignore parens.
+    parent = node.parent
+    while parent.kind == tok.RP:
+        parent = parent.parent
+
+    # Allow x = x || ...
+    if parent.kind == tok.OR and len(parent.kids) == 2 and \
+            node is parent.kids[-1]:
+        parent = parent.parent
+
+    # Var assignment.
+    if parent.kind == tok.NAME and parent.opcode == op.SETNAME:
+        return parent.atom
+
+    # Assignment.
+    if parent.kind == tok.ASSIGN and parent.opcode == op.NOP:
+        if parent.kids[0].kind == tok.NAME and \
+           parent.kids[0].opcode == op.SETNAME:
+            return parent.kids[0].atom
+        return '<error>'
+
+    # Object literal.
+    if parent.kind == tok.COLON and parent.parent.kind == tok.RC:
+        return parent.kids[0].atom
+
+@lookfor(tok.FUNCTION)
+def function_name_missing(node):
+    if node.fn_name:
+        return
+
+    expected_name = _get_expected_function_name(node)
+    if not expected_name is None:
+        raise LintWarning(node, name=expected_name)
+
+@lookfor(tok.FUNCTION)
+def function_name_mismatch(node):
+    if not node.fn_name:
+        return
+
+    expected_name = _get_expected_function_name(node)
+    if expected_name is None:
+        return
+
+    if expected_name != node.fn_name:
+        raise LintWarning(node, fn_name=node.fn_name, prop_name=expected_name)
 
 @lookfor()
 def mismatch_ctrl_comments(node):

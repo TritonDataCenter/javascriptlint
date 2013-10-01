@@ -14,7 +14,7 @@ function want_assign_or_call() {
     function test() {
     }
 
-    function() { /*warning:want_assign_or_call*/
+    function() { /*warning:want_assign_or_call*/ /*warning:misplaced_function*/
         return 42;
     };
 
