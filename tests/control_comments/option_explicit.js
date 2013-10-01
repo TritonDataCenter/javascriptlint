@@ -65,7 +65,10 @@ function option_explicit(parm) {
     (function func_expr() { /*warning:want_assign_or_call*/
         return 10;
     });
-    j = func_expr();
+    j = func_expr(); /*warning:undeclared_identifier*/
 
     return "";
 }
+
+// Ensure that we can reference top-level functions.
+option_explicit(null);

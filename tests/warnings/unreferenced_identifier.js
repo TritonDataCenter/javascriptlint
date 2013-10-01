@@ -74,8 +74,10 @@ function unreferenced_identifier() {
     tmp = ref_dec--; /*warning:inc_dec_within_stmt*/
     tmp = -tmp;
 
-    /* Test named functions as references. */
-    var fn = function ref_func() { return 42; }; /*warning:unreferenced_function*/
+    /* Test named functions as references.
+     * (The name is ignored since it's a function expression.)
+     */
+    var fn = function ref_func() { return 42; };
     fn();
 
     /* Test nested scopes. */

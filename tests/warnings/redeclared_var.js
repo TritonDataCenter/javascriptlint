@@ -7,4 +7,9 @@ function redeclared_var() {
         return;
     }
     var myFunction; /*warning:redeclared_var*/
+
+    // myFunction isn't a redeclaration, since function names in function
+    // expressions don't matter.
+    var tmp = function myFunction(){};
+    /*jsl:unused tmp*/
 }
