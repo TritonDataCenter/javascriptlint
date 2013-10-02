@@ -112,7 +112,7 @@ class ParseNode:
         self.endpos = end_pos
         self.no_semi = no_semi
         self.end_comma = end_comma
-        
+
         for i, kid in enumerate(self.kids):
             if kid:
                 assert isinstance(kid, ParseNode)

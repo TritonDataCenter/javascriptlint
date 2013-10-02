@@ -163,14 +163,14 @@ class JSVersionSetting(Setting):
     def load(self, enabled, parm):
         if not enabled:
             raise ConfError('Expected +.')
-        
+
         self.value = util.JSVersion.fromtype(parm)
         if not self.value:
             raise ConfError('Invalid JavaScript version: %s' % parm)
 
 class Conf:
     def __init__(self):
-        recurse = BooleanSetting(False) 
+        recurse = BooleanSetting(False)
         self._settings = {
             'recurse': recurse,
             'output-format': StringSetting('__FILE__(__LINE__): __ERROR__'),

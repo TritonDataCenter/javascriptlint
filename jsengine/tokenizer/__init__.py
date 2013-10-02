@@ -41,7 +41,7 @@ _PUNCTUATORS = {
     "}": "RBRACE",
     "(": "LPAREN",
     ")": "RPAREN",
-    "[": "LBRACKET",    
+    "[": "LBRACKET",
     "]": "RBRACKET",
     ".": "DOT",
     ";": "SEMI",
@@ -58,7 +58,7 @@ _PUNCTUATORS = {
     "!": "LOGICAL_NOT",
     "~": "BIT_NOT",
     "?": "QUESTION",
-    ":": "COLON",    
+    ":": "COLON",
     "=": "ASSIGN",
     "/": "DIV",
     "!": "LOGICAL_NOT",
@@ -159,7 +159,7 @@ class TokenStream:
 
     def getpos(self, offset=0):
         return self._nodepositions.from_offset(self._pos+offset)
- 
+
     def watch_reads(self):
         self._watched_pos = self._pos
 
@@ -316,7 +316,7 @@ class Tokenizer:
 
     def _next(self, parse_regexp=False):
         stream = self._stream
-        
+
         if stream.eof():
             return Token(tok.EOF)
 
@@ -331,10 +331,10 @@ class Tokenizer:
                 elif stream.readif(1, _WHITESPACE):
                     pass
                 else:
-                    break            
+                    break
             if linebreak:
                 return Token(tok.EOL)
-            else:                
+            else:
                 return Token(tok.SPACE)
 
         # COMMENTS

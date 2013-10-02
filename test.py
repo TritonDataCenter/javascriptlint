@@ -96,7 +96,7 @@ def _get_test_files():
 class _CustomLintReporter(TextReporter):
     line_format = '{path}({line}): [{msg_id}({symbol}){obj}] {msg}'
     def __init__(self):
-        TextReporter.__init__(self)      
+        TextReporter.__init__(self)
         self.msg_count = 0
 
     def write_message(self, msg):
@@ -129,7 +129,6 @@ def _run_pylint():
         'C0103', # Invalid name "%s" (should match %s)
         'C0202', # Class method should have "cls" as first argument
         'C0301', # Line too long (%s/%s)
-        'C0303', # Trailing whitespace
         'C0321', # More than one statement on a single line
         'C0323', # Operator not followed by a space
         'C0324', # Comma not followed by a space

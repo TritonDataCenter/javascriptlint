@@ -86,7 +86,7 @@ def _primary_expression(t):
                                   x.startpos, x.endpos, None, [])
                 items[-1] = items[-1] or comma
 
-                # Check for the end. 
+                # Check for the end.
                 if t.peek().tok == tok.RBRACKET:
                     end_comma = comma
                     break
@@ -306,7 +306,7 @@ def _binary_expression(t, dict_, child_expr_callback):
 _MULTIPLICATIVE = {
     tok.MUL: (kind.STAR, op.MUL),
     tok.DIV: (kind.DIVOP, op.DIV),
-    tok.MOD: (kind.DIVOP, op.MOD), 
+    tok.MOD: (kind.DIVOP, op.MOD),
 }
 def _multiplicative_expression(t):
     return _binary_expression(t, _MULTIPLICATIVE, _unary_expression)
@@ -391,7 +391,7 @@ def _logical_and_expression(t, allowin):
             t.expect(tok.LOGICAL_AND)
         else:
             break
-    
+
     while len(exprs) > 1:
         right = exprs.pop()
         left = exprs[-1]
@@ -408,7 +408,7 @@ def _logical_or_expression(t, allowin):
             t.expect(tok.LOGICAL_OR)
         else:
             break
-            
+
     while len(exprs) > 1:
         right = exprs.pop()
         left = exprs[-1]
@@ -467,7 +467,7 @@ def _assignment_expression(t, allowin):
         kind_, op_ = _ASSIGNS[t.peek().tok]
         t.advance()
         right = _assignment_expression(t, allowin)
-        return ParseNode(kind_, op_, 
+        return ParseNode(kind_, op_,
                          left.startpos, right.endpos, None, [left, right])
     else:
         return left
@@ -607,7 +607,7 @@ def _for_statement(t):
                      op.FORIN if condition.kind == kind.IN else None,
                      for_startpos, body.endpos,
                      None, [condition, body])
-    
+
 def _continue_statement(t):
     endtoken = t.expect(tok.CONTINUE)
     startpos = endtoken.startpos
@@ -617,7 +617,7 @@ def _continue_statement(t):
         name = endtoken.atom
     else:
         name = None
-    # TODO: Validate Scope Labels 
+    # TODO: Validate Scope Labels
     return _auto_semicolon(t, kind.CONTINUE, None, startpos, endtoken.endpos, name, [])
 
 def _break_statement(t):
@@ -629,19 +629,19 @@ def _break_statement(t):
         name = endtoken.atom
     else:
         name = None
-    # TODO: Validate Scope Labels 
+    # TODO: Validate Scope Labels
     return _auto_semicolon(t, kind.BREAK, None, startpos, endtoken.endpos, name, [])
 
 def _return_statement(t):
     endtoken = t.expect(tok.RETURN)
     startpos = endtoken.startpos
-    
+
     if t.peek_sameline().tok not in (tok.EOF, tok.EOL, tok.SEMI, tok.RBRACE):
         expr = _expression(t, True)
         endtoken = expr
     else:
         expr = None
-    # TODO: Validate Scope Labels 
+    # TODO: Validate Scope Labels
     return _auto_semicolon(t, kind.RETURN, None, startpos, endtoken.endpos,
                      None, [expr])
 
@@ -672,7 +672,7 @@ def _switch_statement(t):
             case_kind = kind.DEFAULT
         else:
             raise JSSyntaxError(t.peek().startpos, 'invalid_case')
-        
+
         case_endpos = t.expect(tok.COLON).endpos
 
         statements = []
@@ -692,7 +692,7 @@ def _switch_statement(t):
             ParseNode(kind.LC, None, statements_startpos,
                       statements_endpos, None, statements)
         ]))
-        
+
     rc_endpos = t.expect(tok.RBRACE).endpos
     return ParseNode(kind.SWITCH, None, switch_startpos, rc_endpos,
                      None, [expr,
@@ -734,7 +734,7 @@ def _try_statement(t):
                 ])
             ])
         try_endpos = catch_endpos
-     
+
     if t.peek().tok == tok.FINALLY:
         t.advance()
         finally_node = _block_statement(t)
@@ -782,7 +782,7 @@ def _statement(t):
         raise JSSyntaxError(x.startpos, 'unexpected_eof')
     elif x.tok == tok.FUNCTION:
         return _function_declaration(t, op.CLOSURE) #TODO: warn, since this is not reliable
-        
+
     elif x.tok not in (tok.LBRACE, tok.FUNCTION):
         expr = _expression(t, True)
         if expr.kind == tok.NAME and t.peek().tok == tok.COLON:
