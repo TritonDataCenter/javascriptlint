@@ -76,7 +76,7 @@ def _testfile(path):
         for line, warning, errdesc in unexpected_warnings:
             errors.append('\tline %i: %s/%s' % (line+1, warning, errdesc))
     if errors:
-        raise TestError, '\n'.join(errors)
+        raise TestError('\n'.join(errors))
 
 def _get_test_files():
     # Get a list of test files.
@@ -143,7 +143,6 @@ def _run_pylint():
         'R0924', # Badly implemented
         'W0109', # Duplicate key %r in dictionary
         'W0120', # Else clause on loop without a break statement
-        'W0121', # old-raise-syntax
         'W0141', # Used builtin function %r
         'W0201', # Attribute %r defined outside __init__
         'W0212', # Access to a protected member %s of a client class
