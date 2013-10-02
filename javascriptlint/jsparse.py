@@ -55,7 +55,7 @@ def parse(script, jsversion, error_callback, startpos=None):
     """ All node positions will be relative to startpos. This allows scripts
         to be embedded in a file (for example, HTML).
     """
-    startpos = startpos or NodePos(0,0)
+    startpos = startpos or NodePos(0, 0)
     jsversion = jsversion or JSVersion.default()
     assert isvalidversion(jsversion), jsversion
     if jsversion.e4x:
@@ -173,7 +173,7 @@ class TestNodePositions(unittest.TestCase):
         self.assertEquals(pos.to_offset(NodePos(1, 0)), 5)
         self.assertEquals(pos.to_offset(NodePos(3, 1)), 11)
     def testStartPos(self):
-        pos = NodePositions('abc\r\ndef\n\nghi', NodePos(3,4))
+        pos = NodePositions('abc\r\ndef\n\nghi', NodePos(3, 4))
         self.assertEquals(pos.to_offset(NodePos(3, 4)), 0)
         self.assertEquals(pos.to_offset(NodePos(3, 5)), 1)
         self.assertEquals(pos.from_offset(0), NodePos(3, 4))
@@ -185,21 +185,21 @@ class TestNodeRanges(unittest.TestCase):
     def testAdd(self):
         r = NodeRanges()
         r.add(5, 10)
-        self.assertEquals(r._offsets, [5,11])
+        self.assertEquals(r._offsets, [5, 11])
         r.add(15, 20)
-        self.assertEquals(r._offsets, [5,11,15,21])
-        r.add(21,22)
-        self.assertEquals(r._offsets, [5,11,15,23])
-        r.add(4,5)
-        self.assertEquals(r._offsets, [4,11,15,23])
-        r.add(9,11)
-        self.assertEquals(r._offsets, [4,12,15,23])
-        r.add(10,20)
-        self.assertEquals(r._offsets, [4,23])
-        r.add(4,22)
-        self.assertEquals(r._offsets, [4,23])
-        r.add(30,30)
-        self.assertEquals(r._offsets, [4,23,30,31])
+        self.assertEquals(r._offsets, [5, 11, 15, 21])
+        r.add(21, 22)
+        self.assertEquals(r._offsets, [5, 11, 15, 23])
+        r.add(4, 5)
+        self.assertEquals(r._offsets, [4, 11, 15, 23])
+        r.add(9, 11)
+        self.assertEquals(r._offsets, [4, 12, 15, 23])
+        r.add(10, 20)
+        self.assertEquals(r._offsets, [4, 23])
+        r.add(4, 22)
+        self.assertEquals(r._offsets, [4, 23])
+        r.add(30, 30)
+        self.assertEquals(r._offsets, [4, 23, 30, 31])
     def testHas(self):
         r = NodeRanges()
         r.add(5, 10)
@@ -239,8 +239,8 @@ class TestLineOffset(unittest.TestCase):
             return errors[0]
         self.assertEquals(geterror(' ?', None), (0, 1, 'syntax_error', {}))
         self.assertEquals(geterror('\n ?', None), (1, 1, 'syntax_error', {}))
-        self.assertEquals(geterror(' ?', NodePos(1,1)), (1, 2, 'syntax_error', {}))
-        self.assertEquals(geterror('\n ?', NodePos(1,1)), (2, 1, 'syntax_error', {}))
+        self.assertEquals(geterror(' ?', NodePos(1, 1)), (1, 2, 'syntax_error', {}))
+        self.assertEquals(geterror('\n ?', NodePos(1, 1)), (2, 1, 'syntax_error', {}))
     def testNodePos(self):
         def getnodepos(script, startpos):
             root = parse(script, None, None, startpos)
@@ -248,24 +248,24 @@ class TestLineOffset(unittest.TestCase):
             var, = root.kids
             self.assertEquals(var.kind, tok.VAR)
             return var.start_pos()
-        self.assertEquals(getnodepos('var x;', None), NodePos(0,0))
-        self.assertEquals(getnodepos(' var x;', None), NodePos(0,1))
-        self.assertEquals(getnodepos('\n\n var x;', None), NodePos(2,1))
-        self.assertEquals(getnodepos('var x;', NodePos(3,4)), NodePos(3,4))
-        self.assertEquals(getnodepos(' var x;', NodePos(3,4)), NodePos(3,5))
-        self.assertEquals(getnodepos('\n\n var x;', NodePos(3,4)), NodePos(5,1))
+        self.assertEquals(getnodepos('var x;', None), NodePos(0, 0))
+        self.assertEquals(getnodepos(' var x;', None), NodePos(0, 1))
+        self.assertEquals(getnodepos('\n\n var x;', None), NodePos(2, 1))
+        self.assertEquals(getnodepos('var x;', NodePos(3, 4)), NodePos(3, 4))
+        self.assertEquals(getnodepos(' var x;', NodePos(3, 4)), NodePos(3, 5))
+        self.assertEquals(getnodepos('\n\n var x;', NodePos(3, 4)), NodePos(5, 1))
     def testComments(self):
         def testcomment(comment, startpos, expectedpos):
             root = parse(comment, None, None, startpos)
             comment, = findcomments(comment, root, startpos)
             self.assertEquals(comment.start_pos(), expectedpos)
         for comment in ('/*comment*/', '//comment'):
-            testcomment(comment, None, NodePos(0,0))
-            testcomment(' %s' % comment, None, NodePos(0,1))
-            testcomment('\n\n %s' % comment, None, NodePos(2,1))
-            testcomment('%s' % comment, NodePos(3,4), NodePos(3,4))
-            testcomment(' %s' % comment, NodePos(3,4), NodePos(3,5))
-            testcomment('\n\n %s' % comment, NodePos(3,4), NodePos(5,1))
+            testcomment(comment, None, NodePos(0, 0))
+            testcomment(' %s' % comment, None, NodePos(0, 1))
+            testcomment('\n\n %s' % comment, None, NodePos(2, 1))
+            testcomment('%s' % comment, NodePos(3, 4), NodePos(3, 4))
+            testcomment(' %s' % comment, NodePos(3, 4), NodePos(3, 5))
+            testcomment('\n\n %s' % comment, NodePos(3, 4), NodePos(5, 1))
 
 if __name__ == '__main__':
     unittest.main()

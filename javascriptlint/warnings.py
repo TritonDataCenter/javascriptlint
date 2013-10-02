@@ -290,7 +290,7 @@ def missing_default_case(node):
 def with_statement(node):
     raise LintWarning(node)
 
-@lookfor(tok.EQOP,tok.RELOP)
+@lookfor(tok.EQOP, tok.RELOP)
 def useless_comparison(node):
     for lvalue, rvalue in itertools.combinations(node.kids, 2):
         if lvalue.is_equivalent(rvalue):

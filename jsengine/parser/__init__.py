@@ -854,7 +854,7 @@ class TestParser(unittest.TestCase):
         try:
             parsestring('/*')
         except JSSyntaxError as error:
-            self.assertEqual(error.pos, NodePos(0,1))
+            self.assertEqual(error.pos, NodePos(0, 1))
         else:
             self.assert_(False)
     def testObjectEndComma(self):

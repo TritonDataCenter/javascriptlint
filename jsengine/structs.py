@@ -63,7 +63,7 @@ class NodeRanges:
             end = self._offsets[j]
             j += 1
 
-        self._offsets[i:j] = [start,end]
+        self._offsets[i:j] = [start, end]
     def has(self, pos):
         return bisect.bisect_right(self._offsets, pos) % 2 == 1
 

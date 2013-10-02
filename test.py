@@ -130,8 +130,6 @@ def _run_pylint():
         'C0202', # Class method should have "cls" as first argument
         'C0301', # Line too long (%s/%s)
         'C0321', # More than one statement on a single line
-        'C0323', # Operator not followed by a space
-        'C0324', # Comma not followed by a space
         'C1001', # Old style class
         'E0602', # Undefined variable %r
         'E1101', # %s %r has no %r member
