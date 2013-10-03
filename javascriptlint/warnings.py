@@ -114,6 +114,7 @@ errors = {
     'expected_tok': 'expected token: {token}',
     'unexpected_char': 'unexpected character: {char}',
     'unexpected_eof': 'unexpected end of file',
+    'io_error': '{error}',
 }
 
 def format_error(errname, **errargs):

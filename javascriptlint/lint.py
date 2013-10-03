@@ -302,8 +302,13 @@ def lint_files(paths, lint_error, encoding, conf=conf.Conf(), printpaths=True):
             return lint_cache[normpath]
         if printpaths:
             print normpath
-        contents = fs.readfile(path, encoding)
+
         lint_cache[normpath] = _Script()
+        try:
+            contents = fs.readfile(path, encoding)
+        except IOError, error:
+            _lint_error(0, 0, 'io_error', unicode(error))
+            return lint_cache[normpath]
 
         script_parts = []
         if kind == 'js':
