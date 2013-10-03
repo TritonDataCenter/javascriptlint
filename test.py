@@ -105,6 +105,10 @@ class _CustomLintReporter(TextReporter):
 
 def _get_python_modules(dir_):
     for root, dirs, files in os.walk(dir_):
+        for exclude in ('build', 'dist'):
+            if exclude in dirs:
+                build.remove(exclude)
+
         if '.svn' in dirs:
             dirs.remove('.svn')
         for name in files:

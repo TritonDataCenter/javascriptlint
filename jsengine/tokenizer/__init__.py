@@ -397,7 +397,8 @@ class Tokenizer:
 
                 if stream.readif(1, 'eE'):
                     stream.readif(1, '+-')
-                    stream.require(_DIGITS)
+                    if not stream.readif(1, _DIGITS):
+                        raise JSSyntaxError(stream.getpos(), 'syntax_error')
                     while stream.readif(1, _DIGITS):
                         pass
 
