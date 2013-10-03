@@ -66,7 +66,7 @@ def _profile_enabled(func, *args, **kwargs):
 def _profile_disabled(func, *args, **kwargs):
     func(*args, **kwargs)
 
-def main():
+def _main():
     parser = OptionParser(usage="%prog [options] [files]")
     add = parser.add_option
     add("--conf", dest="conf", metavar="CONF",
@@ -153,6 +153,12 @@ def main():
     if _lint_results['warnings']:
         sys.exit(1)
     sys.exit(0)
+
+def main():
+    try:
+        _main()
+    except KeyboardInterrupt:
+        raise SystemExit(130)
 
 if __name__ == '__main__':
     main()
