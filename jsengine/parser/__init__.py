@@ -22,16 +22,16 @@ _VERSIONS = [
     "1.7",
 ]
 
-def _auto_semicolon(t, kind_, op_, startpos, endpos, atom, kids):
+def _auto_semicolon(t, kind_, op_, start_offset, end_offset, atom, kids):
     nosemi = False
     if t.peek_sameline().tok not in (tok.EOF, tok.EOL, tok.RBRACE):
         x = t.advance()
         if x.tok != tok.SEMI:
-            raise JSSyntaxError(x.startpos, 'semi_before_stmnt')
-        endpos = x.endpos
+            raise JSSyntaxError(x.start_offset, 'semi_before_stmnt')
+        end_offset = x.end_offset
     else:
         nosemi = True
-    return ParseNode(kind_, op_, startpos, endpos, atom, kids, nosemi)
+    return ParseNode(kind_, op_, start_offset, end_offset, atom, kids, nosemi)
 
 def _function_arglist(t):
     fn_args = []
@@ -39,8 +39,8 @@ def _function_arglist(t):
         while True:
             x = t.expect(tok.NAME)
             fn_args.append(ParseNode(kind.NAME, op.ARGNAME,
-                                     x.startpos,
-                                     x.endpos, x.atom, []))
+                                     x.start_offset,
+                                     x.end_offset, x.atom, []))
             if t.peek().tok == tok.COMMA:
                 t.advance()
             else:
@@ -50,23 +50,23 @@ def _function_arglist(t):
 def _primary_expression(t):
     x = t.next_withregexp()
     if x.tok == tok.THIS:
-        return ParseNode(kind.PRIMARY, op.THIS, x.startpos, x.endpos, None, [])
+        return ParseNode(kind.PRIMARY, op.THIS, x.start_offset, x.end_offset, None, [])
     elif x.tok == tok.NAME:
-        return ParseNode(kind.NAME, op.NAME, x.startpos, x.endpos, x.atom, [None])
+        return ParseNode(kind.NAME, op.NAME, x.start_offset, x.end_offset, x.atom, [None])
     elif x.tok == tok.NULL:
-        return ParseNode(kind.PRIMARY, op.NULL, x.startpos, x.endpos, None, [])
+        return ParseNode(kind.PRIMARY, op.NULL, x.start_offset, x.end_offset, None, [])
     elif x.tok == tok.TRUE:
-        return ParseNode(kind.PRIMARY, op.TRUE, x.startpos, x.endpos, None, [])
+        return ParseNode(kind.PRIMARY, op.TRUE, x.start_offset, x.end_offset, None, [])
     elif x.tok == tok.FALSE:
-        return ParseNode(kind.PRIMARY, op.FALSE, x.startpos, x.endpos, None, [])
+        return ParseNode(kind.PRIMARY, op.FALSE, x.start_offset, x.end_offset, None, [])
     elif x.tok == tok.STRING:
-        return ParseNode(kind.STRING, op.STRING, x.startpos, x.endpos, x.atom, [])
+        return ParseNode(kind.STRING, op.STRING, x.start_offset, x.end_offset, x.atom, [])
     elif x.tok == tok.REGEXP:
-        return ParseNode(kind.OBJECT, op.REGEXP, x.startpos, x.endpos, None, [])
+        return ParseNode(kind.OBJECT, op.REGEXP, x.start_offset, x.end_offset, None, [])
     elif x.tok == tok.NUMBER:
-        return ParseNode(kind.NUMBER, None, x.startpos, x.endpos, x.atom, [])
+        return ParseNode(kind.NUMBER, None, x.start_offset, x.end_offset, x.atom, [])
     elif x.tok == tok.LBRACKET:
-        startpos = x.startpos
+        start_offset = x.start_offset
         items = []
         end_comma = None
         if t.peek().tok != tok.RBRACKET:
@@ -83,18 +83,18 @@ def _primary_expression(t):
                 # Expect a comma and use it if the value was missing.
                 x = t.expect(tok.COMMA)
                 comma = ParseNode(kind.COMMA, None,
-                                  x.startpos, x.endpos, None, [])
+                                  x.start_offset, x.end_offset, None, [])
                 items[-1] = items[-1] or comma
 
                 # Check for the end.
                 if t.peek().tok == tok.RBRACKET:
                     end_comma = comma
                     break
-        endpos = t.expect(tok.RBRACKET).endpos
-        return ParseNode(kind.RB, None, startpos, endpos, None, items,
+        end_offset = t.expect(tok.RBRACKET).end_offset
+        return ParseNode(kind.RB, None, start_offset, end_offset, None, items,
                          end_comma=end_comma)
     elif x.tok == tok.LBRACE:
-        startpos = x.startpos
+        start_offset = x.start_offset
         kids = []
         # TODO: get/set
         end_comma = None
@@ -104,50 +104,50 @@ def _primary_expression(t):
                 break
             elif x.tok == tok.STRING:
                 t.expect(tok.STRING)
-                key = ParseNode(kind.STRING, None, x.startpos,
-                                x.endpos, x.atom, [])
+                key = ParseNode(kind.STRING, None, x.start_offset,
+                                x.end_offset, x.atom, [])
             elif x.tok == tok.NUMBER:
                 t.expect(tok.NUMBER)
-                key = ParseNode(kind.NUMBER, None, x.startpos,
-                                x.endpos, x.atom, [])
+                key = ParseNode(kind.NUMBER, None, x.start_offset,
+                                x.end_offset, x.atom, [])
             else:
                 x = t.expect_identifiername()
-                key = ParseNode(kind.NAME, None, x.startpos, x.endpos,
+                key = ParseNode(kind.NAME, None, x.start_offset, x.end_offset,
                                 x.atom, [])
             t.expect(tok.COLON)
             value = _assignment_expression(t, True)
-            kids.append(ParseNode(kind.COLON, None, key.startpos,
-                                  value.endpos, None, [key, value]))
+            kids.append(ParseNode(kind.COLON, None, key.start_offset,
+                                  value.end_offset, None, [key, value]))
             if t.peek().tok == tok.COMMA:
                 x = t.advance()
                 end_comma = ParseNode(kind.COMMA, None,
-                                      x.startpos, x.endpos, None, [])
+                                      x.start_offset, x.end_offset, None, [])
             else:
                 end_comma = None
                 break
-        endpos = t.expect(tok.RBRACE).endpos
-        return ParseNode(kind.RC, None, startpos, endpos, None, kids,
+        end_offset = t.expect(tok.RBRACE).end_offset
+        return ParseNode(kind.RC, None, start_offset, end_offset, None, kids,
                          end_comma=end_comma)
     elif x.tok == tok.LPAREN:
-        startpos = x.startpos
+        start_offset = x.start_offset
         kid = _expression(t, True)
-        endpos = t.expect(tok.RPAREN).endpos
-        return ParseNode(kind.RP, None, startpos, endpos, None, [kid])
+        end_offset = t.expect(tok.RPAREN).end_offset
+        return ParseNode(kind.RP, None, start_offset, end_offset, None, [kid])
     else:
-        raise JSSyntaxError(x.startpos, 'syntax_error')
+        raise JSSyntaxError(x.start_offset, 'syntax_error')
 
 def _function_declaration(t, named_opcode):
     node = _function_expression(t, named_opcode)
 
     # Convert anonymous functions in expressions.
     if node.opcode == op.ANONFUNOBJ:
-        node = _auto_semicolon(t, kind.SEMI, None, node.startpos, node.endpos,
+        node = _auto_semicolon(t, kind.SEMI, None, node.start_offset, node.end_offset,
                                None, [node])
     return node
 
 
 def _function_expression(t, named_opcode):
-    startpos = t.expect(tok.FUNCTION).startpos
+    start_offset = t.expect(tok.FUNCTION).start_offset
     if t.peek().tok == tok.NAME:
         fn_name = t.expect(tok.NAME).atom
         opcode = named_opcode
@@ -157,12 +157,12 @@ def _function_expression(t, named_opcode):
     t.expect(tok.LPAREN)
     fn_args = _function_arglist(t)
     t.expect(tok.RPAREN)
-    fn_body_startpos = t.expect(tok.LBRACE).startpos
+    fn_body_start_offset = t.expect(tok.LBRACE).start_offset
     kids = _sourceelements(t, tok.RBRACE)
-    fn_body_endpos = t.expect(tok.RBRACE).endpos
-    fn_body = ParseNode(kind.LC, None, fn_body_startpos,
-                        fn_body_endpos, None, kids)
-    return ParseNode(kind.FUNCTION, opcode, startpos, fn_body.endpos,
+    fn_body_end_offset = t.expect(tok.RBRACE).end_offset
+    fn_body = ParseNode(kind.LC, None, fn_body_start_offset,
+                        fn_body_end_offset, None, kids)
+    return ParseNode(kind.FUNCTION, opcode, start_offset, fn_body.end_offset,
                      fn_name, [fn_body], fn_args=fn_args)
 
 def _argument_list(t):
@@ -177,17 +177,17 @@ def _argument_list(t):
     return args
 
 def _new_expression(t):
-    startpos = t.expect(tok.NEW).startpos
+    start_offset = t.expect(tok.NEW).start_offset
     expr = _member_expression(t)
     # If no (), this is a variant of the NewExpression
     if t.peek().tok == tok.LPAREN:
         t.expect(tok.LPAREN)
         args = _argument_list(t)
-        endpos = t.expect(tok.RPAREN).endpos
+        end_offset = t.expect(tok.RPAREN).end_offset
     else:
         args = []
-        endpos = expr.endpos
-    return ParseNode(kind.NEW, op.NEW, startpos, endpos,
+        end_offset = expr.end_offset
+    return ParseNode(kind.NEW, op.NEW, start_offset, end_offset,
                      None, [expr] + args)
 
 def _member_expression(t, _recurse=True):
@@ -203,13 +203,13 @@ def _member_expression(t, _recurse=True):
         if t.peek().tok == tok.LBRACKET:
             t.advance()
             expr = _expression(t, True)
-            endpos = t.expect(tok.RBRACKET).endpos
-            kid = ParseNode(kind.LB, op.GETELEM, kid.startpos, endpos,
+            end_offset = t.expect(tok.RBRACKET).end_offset
+            kid = ParseNode(kind.LB, op.GETELEM, kid.start_offset, end_offset,
                             None, [kid, expr])
         elif t.peek().tok == tok.DOT:
             t.advance()
             expr = t.expect_identifiername()
-            kid = ParseNode(kind.DOT, op.GETPROP, kid.startpos, expr.endpos,
+            kid = ParseNode(kind.DOT, op.GETPROP, kid.start_offset, expr.end_offset,
                             expr.atom, [kid])
         else:
             return kid
@@ -224,21 +224,21 @@ def _call_expression(t):
         if x.tok == tok.LPAREN:
             t.expect(tok.LPAREN)
             args = _argument_list(t)
-            endpos = t.expect(tok.RPAREN).endpos
-            expr = ParseNode(kind.LP, op.CALL, expr.startpos,
-                             endpos, None, [expr] + args)
+            end_offset = t.expect(tok.RPAREN).end_offset
+            expr = ParseNode(kind.LP, op.CALL, expr.start_offset,
+                             end_offset, None, [expr] + args)
         elif x.tok == tok.LBRACKET:
             t.expect(tok.LBRACKET)
             lookup = _expression(t, True)
-            endpos = t.expect(tok.RBRACKET).endpos
+            end_offset = t.expect(tok.RBRACKET).end_offset
             expr = ParseNode(kind.LB, op.GETELEM,
-                             expr.startpos, endpos,
+                             expr.start_offset, end_offset,
                              None, [expr, lookup])
         elif x.tok == tok.DOT:
             t.expect(tok.DOT)
             lookup = t.expect_identifiername()
             expr = ParseNode(kind.DOT, op.GETPROP,
-                             expr.startpos, lookup.endpos,
+                             expr.start_offset, lookup.end_offset,
                              lookup.atom, [expr])
         else:
             return expr
@@ -251,17 +251,17 @@ def _lefthandside_expression(t):
 def _postfix_expression(t):
     kid = _lefthandside_expression(t)
     if t.peek_sameline().tok == tok.INC:
-        endpos = t.expect(tok.INC).endpos
+        end_offset = t.expect(tok.INC).end_offset
         if kid.kind == kind.DOT and kid.opcode == op.GETPROP:
             opcode = op.PROPINC
         else:
             opcode = op.NAMEINC
         return ParseNode(kind.INC, opcode,
-                         kid.startpos, endpos, None, [kid])
+                         kid.start_offset, end_offset, None, [kid])
     elif t.peek_sameline().tok == tok.DEC:
-        endpos = t.expect(tok.DEC).endpos
+        end_offset = t.expect(tok.DEC).end_offset
         return ParseNode(kind.DEC, op.NAMEDEC,
-                         kid.startpos, endpos, None, [kid])
+                         kid.start_offset, end_offset, None, [kid])
     else:
         return kid
 
@@ -280,9 +280,9 @@ def _unary_expression(t):
     x = t.peek()
     if x.tok in _UNARY:
         kind_, op_ = _UNARY[x.tok]
-        startpos = t.advance().startpos
+        start_offset = t.advance().start_offset
         kid = _unary_expression(t)
-        return ParseNode(kind_, op_, startpos, kid.endpos, None, [kid])
+        return ParseNode(kind_, op_, start_offset, kid.end_offset, None, [kid])
     else:
         return _postfix_expression(t)
 
@@ -300,7 +300,7 @@ def _binary_expression(t, dict_, child_expr_callback):
             t.advance()
             kids.append(child_expr_callback(t))
         expr = ParseNode(kind_, op_,
-                         kids[0].startpos, kids[1].endpos,
+                         kids[0].start_offset, kids[1].end_offset,
                          None, kids)
 
 _MULTIPLICATIVE = {
@@ -359,7 +359,7 @@ def _bitwise_and_expression(t, allowin):
         t.advance()
         right = _equality_expression(t, allowin)
         left = ParseNode(kind.BITAND, op.BITAND,
-                         left.startpos, right.endpos,
+                         left.start_offset, right.end_offset,
                          None, [left, right])
     return left
 
@@ -369,7 +369,7 @@ def _bitwise_xor_expression(t, allowin):
         t.advance()
         right = _bitwise_and_expression(t, allowin)
         left = ParseNode(kind.BITXOR, op.BITXOR,
-                         left.startpos, right.endpos,
+                         left.start_offset, right.end_offset,
                          None, [left, right])
     return left
 
@@ -379,7 +379,7 @@ def _bitwise_or_expression(t, allowin):
         t.advance()
         right = _bitwise_xor_expression(t, allowin)
         left = ParseNode(kind.BITOR, op.BITOR,
-                         left.startpos, right.endpos,
+                         left.start_offset, right.end_offset,
                          None, [left, right])
     return left
 
@@ -396,7 +396,7 @@ def _logical_and_expression(t, allowin):
         right = exprs.pop()
         left = exprs[-1]
         exprs[-1] = ParseNode(kind.AND, op.AND,
-                              left.startpos, right.endpos,
+                              left.start_offset, right.end_offset,
                             None, [left, right])
     return exprs[0]
 
@@ -413,7 +413,7 @@ def _logical_or_expression(t, allowin):
         right = exprs.pop()
         left = exprs[-1]
         exprs[-1] = ParseNode(kind.OR, op.OR,
-                              left.startpos, right.endpos,
+                              left.start_offset, right.end_offset,
                             None, [left, right])
     return exprs[0]
 
@@ -425,7 +425,7 @@ def _conditional_expression(t, allowin):
         t.expect(tok.COLON)
         else_ = _assignment_expression(t, allowin)
         return ParseNode(kind.HOOK, None,
-                         kid.startpos, else_.endpos,
+                         kid.start_offset, else_.end_offset,
                          None, [kid, if_, else_])
     else:
         return kid
@@ -463,12 +463,12 @@ def _assignment_expression(t, allowin):
             assert kid.opcode == op.CALL
             kid.opcode = op.SETCALL
         else:
-            raise JSSyntaxError(left.startpos, 'invalid_assign')
+            raise JSSyntaxError(left.start_offset, 'invalid_assign')
         kind_, op_ = _ASSIGNS[t.peek().tok]
         t.advance()
         right = _assignment_expression(t, allowin)
         return ParseNode(kind_, op_,
-                         left.startpos, right.endpos, None, [left, right])
+                         left.start_offset, right.end_offset, None, [left, right])
     else:
         return left
 
@@ -479,8 +479,8 @@ def _expression(t, allowin):
         t.advance()
         items.append(_assignment_expression(t, allowin))
     if len(items) > 1:
-        return ParseNode(kind.COMMA, None, items[0].startpos,
-                         items[-1].endpos, None, items)
+        return ParseNode(kind.COMMA, None, items[0].start_offset,
+                         items[-1].end_offset, None, items)
     else:
         return items[0]
 
@@ -493,8 +493,8 @@ def _variable_declaration(t, allowin):
             t.advance()
             value = _assignment_expression(t, allowin)
         nodes.append(ParseNode(kind.NAME, op.SETNAME if value else op.NAME,
-                               x.startpos,
-                               value.endpos if value else x.endpos,
+                               x.start_offset,
+                               value.end_offset if value else x.end_offset,
                                x.atom, [value]))
 
         if t.peek().tok == tok.COMMA:
@@ -504,27 +504,27 @@ def _variable_declaration(t, allowin):
 
 def _block_statement(t):
     kids = []
-    startpos = t.expect(tok.LBRACE).startpos
+    start_offset = t.expect(tok.LBRACE).start_offset
     while t.peek().tok != tok.RBRACE:
         kids.append(_statement(t))
-    endpos = t.expect(tok.RBRACE).endpos
-    return ParseNode(kind.LC, None, startpos, endpos, None, kids)
+    end_offset = t.expect(tok.RBRACE).end_offset
+    return ParseNode(kind.LC, None, start_offset, end_offset, None, kids)
 
 def _empty_statement(t):
     # EMPTY STATEMENT
     x = t.expect(tok.SEMI)
-    return ParseNode(kind.SEMI, None, x.startpos, x.endpos, None, [None])
+    return ParseNode(kind.SEMI, None, x.start_offset, x.end_offset, None, [None])
 
 def _var_statement(t):
     # VARIABLE STATEMENT
-    startpos = t.expect(tok.VAR).startpos
+    start_offset = t.expect(tok.VAR).start_offset
     nodes = _variable_declaration(t, True)
     return _auto_semicolon(t, kind.VAR, op.DEFVAR,
-                           startpos, nodes[-1].endpos, None, nodes)
+                           start_offset, nodes[-1].end_offset, None, nodes)
 
 def _if_statement(t):
     # IF STATEMENT
-    startpos = t.expect(tok.IF).startpos
+    start_offset = t.expect(tok.IF).start_offset
     t.expect(tok.LPAREN)
     condition = _expression(t, True)
     t.expect(tok.RPAREN)
@@ -534,38 +534,38 @@ def _if_statement(t):
         else_body = _statement(t)
     else:
         else_body = None
-    endpos = else_body.endpos if else_body else if_body.endpos
-    return ParseNode(kind.IF, None, startpos,
-                     endpos, None, [condition, if_body, else_body])
+    end_offset = else_body.end_offset if else_body else if_body.end_offset
+    return ParseNode(kind.IF, None, start_offset,
+                     end_offset, None, [condition, if_body, else_body])
 
 def _do_statement(t):
-    startpos = t.expect(tok.DO).startpos
+    start_offset = t.expect(tok.DO).start_offset
     code = _statement(t)
     t.expect(tok.WHILE)
     t.expect(tok.LPAREN)
     expr = _expression(t, True)
     endtoken = t.expect(tok.RPAREN)
     return _auto_semicolon(t, kind.DO, None,
-                           startpos, endtoken.endpos, None, [code, expr])
+                           start_offset, endtoken.end_offset, None, [code, expr])
 
 def _while_statement(t):
-    startpos = t.expect(tok.WHILE).startpos
+    start_offset = t.expect(tok.WHILE).start_offset
     t.expect(tok.LPAREN)
     expr = _expression(t, True)
     t.expect(tok.RPAREN)
     code = _statement(t)
     return ParseNode(kind.WHILE, None,
-                     startpos, code.endpos, None, [expr, code])
+                     start_offset, code.end_offset, None, [expr, code])
 
 def _for_statement(t):
-    for_startpos = t.expect(tok.FOR).startpos
+    for_start_offset = t.expect(tok.FOR).start_offset
     t.expect(tok.LPAREN)
 
     for_exprs = []
     if t.peek().tok == tok.VAR:
-        var_startpos = t.advance().startpos
+        var_start_offset = t.advance().start_offset
         kids = _variable_declaration(t, False)
-        vars = ParseNode(kind.VAR, op.DEFVAR, var_startpos, kids[-1].endpos,
+        vars = ParseNode(kind.VAR, op.DEFVAR, var_start_offset, kids[-1].end_offset,
                          None, kids)
 
         if t.peek().tok == tok.IN:
@@ -589,8 +589,8 @@ def _for_statement(t):
             for_exprs = [expr, None, None]
 
     if len(for_exprs) == 2:
-        condition = ParseNode(kind.IN, None, for_exprs[0].startpos,
-                              for_exprs[-1].endpos, None, for_exprs)
+        condition = ParseNode(kind.IN, None, for_exprs[0].start_offset,
+                              for_exprs[-1].end_offset, None, for_exprs)
     else:
         x = t.expect(tok.SEMI)
         if t.peek().tok != tok.SEMI:
@@ -605,12 +605,12 @@ def _for_statement(t):
     body = _statement(t)
     return ParseNode(kind.FOR,
                      op.FORIN if condition.kind == kind.IN else None,
-                     for_startpos, body.endpos,
+                     for_start_offset, body.end_offset,
                      None, [condition, body])
 
 def _continue_statement(t):
     endtoken = t.expect(tok.CONTINUE)
-    startpos = endtoken.startpos
+    start_offset = endtoken.start_offset
 
     if t.peek_sameline().tok == tok.NAME:
         endtoken = t.expect(tok.NAME)
@@ -618,11 +618,11 @@ def _continue_statement(t):
     else:
         name = None
     # TODO: Validate Scope Labels
-    return _auto_semicolon(t, kind.CONTINUE, None, startpos, endtoken.endpos, name, [])
+    return _auto_semicolon(t, kind.CONTINUE, None, start_offset, endtoken.end_offset, name, [])
 
 def _break_statement(t):
     endtoken = t.expect(tok.BREAK)
-    startpos = endtoken.startpos
+    start_offset = endtoken.start_offset
 
     if t.peek_sameline().tok == tok.NAME:
         endtoken = t.expect(tok.NAME)
@@ -630,11 +630,11 @@ def _break_statement(t):
     else:
         name = None
     # TODO: Validate Scope Labels
-    return _auto_semicolon(t, kind.BREAK, None, startpos, endtoken.endpos, name, [])
+    return _auto_semicolon(t, kind.BREAK, None, start_offset, endtoken.end_offset, name, [])
 
 def _return_statement(t):
     endtoken = t.expect(tok.RETURN)
-    startpos = endtoken.startpos
+    start_offset = endtoken.start_offset
 
     if t.peek_sameline().tok not in (tok.EOF, tok.EOL, tok.SEMI, tok.RBRACE):
         expr = _expression(t, True)
@@ -642,108 +642,108 @@ def _return_statement(t):
     else:
         expr = None
     # TODO: Validate Scope Labels
-    return _auto_semicolon(t, kind.RETURN, None, startpos, endtoken.endpos,
+    return _auto_semicolon(t, kind.RETURN, None, start_offset, endtoken.end_offset,
                      None, [expr])
 
 def _with_statement(t):
-    startpos = t.expect(tok.WITH).startpos
+    start_offset = t.expect(tok.WITH).start_offset
     t.expect(tok.LPAREN)
     expr = _expression(t, True)
     t.expect(tok.RPAREN)
     body = _statement(t)
-    return ParseNode(kind.WITH, None, startpos, body.endpos, None, [expr, body])
+    return ParseNode(kind.WITH, None, start_offset, body.end_offset, None, [expr, body])
 
 def _switch_statement(t):
-    switch_startpos = t.expect(tok.SWITCH).startpos
+    switch_start_offset = t.expect(tok.SWITCH).start_offset
     t.expect(tok.LPAREN)
     expr = _expression(t, True)
     t.expect(tok.RPAREN)
-    lc_startpos = t.expect(tok.LBRACE).startpos
+    lc_start_offset = t.expect(tok.LBRACE).start_offset
     cases = []
     while t.peek().tok != tok.RBRACE:
         case_kind = None
         case_expr = None
         if t.peek().tok == tok.CASE:
-            case_startpos = t.advance().startpos
+            case_start_offset = t.advance().start_offset
             case_kind = kind.CASE
             case_expr = _expression(t, True)
         elif t.peek().tok == tok.DEFAULT:
-            case_startpos = t.advance().startpos
+            case_start_offset = t.advance().start_offset
             case_kind = kind.DEFAULT
         else:
-            raise JSSyntaxError(t.peek().startpos, 'invalid_case')
+            raise JSSyntaxError(t.peek().start_offset, 'invalid_case')
 
-        case_endpos = t.expect(tok.COLON).endpos
+        case_end_offset = t.expect(tok.COLON).end_offset
 
         statements = []
         while t.peek().tok not in (tok.DEFAULT, tok.CASE, tok.RBRACE):
             statements.append(_statement(t))
         if statements:
-            statements_startpos = statements[0].startpos
-            statements_endpos = statements[-1].endpos
-            case_endpos = statements[-1].endpos
+            statements_start_offset = statements[0].start_offset
+            statements_end_offset = statements[-1].end_offset
+            case_end_offset = statements[-1].end_offset
         else:
-            statements_startpos = case_endpos
-            statements_endpos = case_endpos
+            statements_start_offset = case_end_offset
+            statements_end_offset = case_end_offset
 
-        cases.append(ParseNode(case_kind, None, case_startpos, case_endpos,
+        cases.append(ParseNode(case_kind, None, case_start_offset, case_end_offset,
                                None, [
             case_expr,
-            ParseNode(kind.LC, None, statements_startpos,
-                      statements_endpos, None, statements)
+            ParseNode(kind.LC, None, statements_start_offset,
+                      statements_end_offset, None, statements)
         ]))
 
-    rc_endpos = t.expect(tok.RBRACE).endpos
-    return ParseNode(kind.SWITCH, None, switch_startpos, rc_endpos,
+    rc_end_offset = t.expect(tok.RBRACE).end_offset
+    return ParseNode(kind.SWITCH, None, switch_start_offset, rc_end_offset,
                      None, [expr,
-                ParseNode(kind.LC, None, lc_startpos, rc_endpos, None, cases)])
+                ParseNode(kind.LC, None, lc_start_offset, rc_end_offset, None, cases)])
 
 def _throw_statement(t):
     # TODO: Validate Scope
-    startpos = t.expect(tok.THROW).startpos
+    start_offset = t.expect(tok.THROW).start_offset
     if t.peek_sameline().tok == tok.EOL:
-        raise JSSyntaxError(t.peek_sameline().startpos, 'expected_statement')
+        raise JSSyntaxError(t.peek_sameline().start_offset, 'expected_statement')
     expr = _expression(t, True)
-    return _auto_semicolon(t, kind.THROW, op.THROW, startpos, expr.endpos,
+    return _auto_semicolon(t, kind.THROW, op.THROW, start_offset, expr.end_offset,
                            None, [expr])
 
 def _try_statement(t):
-    try_startpos = t.expect(tok.TRY).startpos
+    try_start_offset = t.expect(tok.TRY).start_offset
 
     try_node = _block_statement(t)
     catch_node = None
     finally_node = None
-    try_endpos = None
+    try_end_offset = None
 
     if t.peek().tok == tok.CATCH:
-        catch_startpos = t.advance().startpos
+        catch_start_offset = t.advance().start_offset
         t.expect(tok.LPAREN)
         x = t.expect(tok.NAME)
-        catch_expr = ParseNode(kind.NAME, None, x.startpos, x.endpos,
+        catch_expr = ParseNode(kind.NAME, None, x.start_offset, x.end_offset,
                                x.atom, [None])
         t.expect(tok.RPAREN)
         catch_block = _block_statement(t)
-        catch_endpos = catch_block.endpos
+        catch_end_offset = catch_block.end_offset
         catch_node = \
             ParseNode(kind.RESERVED, None, None, None, None, [
                 ParseNode(kind.LEXICALSCOPE, op.LEAVEBLOCK,
-                          catch_startpos, catch_endpos, None, [
-                    ParseNode(kind.CATCH, None, catch_startpos,
-                              catch_endpos, None,
+                          catch_start_offset, catch_end_offset, None, [
+                    ParseNode(kind.CATCH, None, catch_start_offset,
+                              catch_end_offset, None,
                        [catch_expr, None, catch_block])
                 ])
             ])
-        try_endpos = catch_endpos
+        try_end_offset = catch_end_offset
 
     if t.peek().tok == tok.FINALLY:
         t.advance()
         finally_node = _block_statement(t)
-        try_endpos = finally_node.endpos
+        try_end_offset = finally_node.end_offset
 
     if not catch_node and not finally_node:
-        raise JSSyntaxError(try_endpos, 'invalid_catch')
+        raise JSSyntaxError(try_end_offset, 'invalid_catch')
 
-    return ParseNode(kind.TRY, None, try_startpos, try_endpos,
+    return ParseNode(kind.TRY, None, try_start_offset, try_end_offset,
                      None,
                      [try_node, catch_node, finally_node])
 
@@ -779,7 +779,7 @@ def _statement(t):
     elif x.tok == tok.TRY:
         return _try_statement(t)
     elif x.tok == tok.EOF:
-        raise JSSyntaxError(x.startpos, 'unexpected_eof')
+        raise JSSyntaxError(x.start_offset, 'unexpected_eof')
     elif x.tok == tok.FUNCTION:
         return _function_declaration(t, op.CLOSURE) #TODO: warn, since this is not reliable
 
@@ -788,13 +788,13 @@ def _statement(t):
         if expr.kind == tok.NAME and t.peek().tok == tok.COLON:
             t.expect(tok.COLON)
             stmt = _statement(t)
-            return ParseNode(kind.COLON, op.NAME, expr.startpos,
-                             stmt.endpos, expr.atom, [stmt])
+            return ParseNode(kind.COLON, op.NAME, expr.start_offset,
+                             stmt.end_offset, expr.atom, [stmt])
 
-        return _auto_semicolon(t, kind.SEMI, None, expr.startpos, expr.endpos,
+        return _auto_semicolon(t, kind.SEMI, None, expr.start_offset, expr.end_offset,
                                None, [expr])
     else:
-        raise JSSyntaxError(x.startpos, 'syntax_error')
+        raise JSSyntaxError(x.start_offset, 'syntax_error')
 
 def _sourceelements(t, end_tok):
     nodes = []
@@ -807,13 +807,14 @@ def _sourceelements(t, end_tok):
         else:
             nodes.append(_statement(t))
 
-def parsestring(s, startpos=None):
-    stream = tokenizer.TokenStream(s, startpos)
+def parsestring(s, start_offset=0):
+    assert not start_offset is None
+    stream = tokenizer.TokenStream(s, start_offset)
     t = tokenizer.Tokenizer(stream)
     nodes = _sourceelements(t, tok.EOF)
-    lc_endpos = t.expect(tok.EOF).endpos
-    lc_startpos = nodes[-1].startpos if nodes else lc_endpos
-    return ParseNode(kind.LC, None, lc_startpos, lc_endpos, None, nodes)
+    lc_end_offset = t.expect(tok.EOF).end_offset
+    lc_start_offset = nodes[-1].start_offset if nodes else lc_end_offset
+    return ParseNode(kind.LC, None, lc_start_offset, lc_end_offset, None, nodes)
 
 def is_valid_version(version):
     return version in _VERSIONS
@@ -824,14 +825,13 @@ def _validate(node, depth=0):
             assert kid.parent is node
             _validate(kid, depth+1)
 
-def parse(script, jsversion,
-          error_callback, startpos):
+def parse(script, jsversion, error_callback, start_offset):
     # TODO: respect version
     assert is_valid_version(jsversion)
     try:
-        root = parsestring(script, startpos)
+        root = parsestring(script, start_offset)
     except JSSyntaxError as error:
-        error_callback(error.pos.line, error.pos.col, error.msg, error.msg_args)
+        error_callback(error.offset, error.msg, error.msg_args)
         return None
     _validate(root)
     return root
@@ -868,8 +868,8 @@ class TestParser(unittest.TestCase):
         self.assertEquals(right.kind, kind.RC)
         node = right.end_comma
         self.assertEquals(node.kind, tok.COMMA)
-        self.assertEquals(node.startpos, NodePos(0, 6))
-        self.assertEquals(node.endpos, NodePos(0, 6))
+        self.assertEquals(node.start_offset, NodePos(0, 6))
+        self.assertEquals(node.end_offset, NodePos(0, 6))
     def _testArrayEndComma(self, script, col):
         root = parsestring(script)
         node, = root.kids
@@ -885,8 +885,8 @@ class TestParser(unittest.TestCase):
             self.assert_(node is None)
         else:
             self.assertEquals(node.kind, tok.COMMA)
-            self.assertEquals(node.startpos, NodePos(0, col))
-            self.assertEquals(node.endpos, NodePos(0, col))
+            self.assertEquals(node.start_offset, NodePos(0, col))
+            self.assertEquals(node.end_offset, NodePos(0, col))
     def testArrayEndComma(self):
         self._testArrayEndComma('a=[,]', 3)
         self._testArrayEndComma('a=[a,]', 4)

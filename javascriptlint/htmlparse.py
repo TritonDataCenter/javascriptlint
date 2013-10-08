@@ -2,18 +2,25 @@
 import HTMLParser
 import unittest
 
+from jsengine.structs import NodePos, NodePositions
+
 class _Parser(HTMLParser.HTMLParser):
     def __init__(self):
         HTMLParser.HTMLParser.__init__(self)
         self._tags = []
+        self._node_positions = None
+
+    def feed(self, data):
+        # Reset line numbers whenever we get data.
+        self._node_positions = None
+        HTMLParser.HTMLParser.feed(self, data)
 
     def handle_starttag(self, tag, attributes):
         if tag.lower() == 'script':
             attr = dict(attributes)
             self._tags.append({
                 'type': 'start',
-                'lineno': self.lineno,
-                'offset': self.offset,
+                'offset': self._getoffset(),
                 'len': len(self.get_starttag_text()),
                 'attr': attr
             })
@@ -22,8 +29,7 @@ class _Parser(HTMLParser.HTMLParser):
         if tag.lower() == 'script':
             self._tags.append({
                 'type': 'end',
-                'lineno': self.lineno,
-                'offset': self.offset,
+                'offset': self._getoffset(),
             })
 
     def unknown_decl(self, data):
@@ -33,9 +39,16 @@ class _Parser(HTMLParser.HTMLParser):
     def gettags(self):
         return self._tags
 
+    def _getoffset(self):
+        # htmlparse returns 1-based line numbers. Calculate the offset of the
+        # script's contents.
+        if self._node_positions is None:
+            self._node_positions = NodePositions(self.rawdata)
+        pos = NodePos(self.lineno - 1, self.offset)
+        return self._node_positions.to_offset(pos)
+
+
 def findscripttags(s):
-    """ Note that the lineno is 1-based.
-    """
     parser = _Parser()
     parser.feed(s)
     parser.close()

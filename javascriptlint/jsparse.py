@@ -16,7 +16,8 @@ def isvalidversion(jsversion):
         return True
     return jsengine.parser.is_valid_version(jsversion.version)
 
-def findpossiblecomments(script, node_positions):
+def findpossiblecomments(script, script_offset):
+    assert not script_offset is None
     pos = 0
     single_line_re = r"//[^\r\n]*"
     multi_line_re = r"/\*(.*?)\*/"
@@ -41,38 +42,34 @@ def findpossiblecomments(script, node_positions):
         start_offset = match.start()
         end_offset = match.end()-1
 
-        start_pos = node_positions.from_offset(start_offset)
-        end_pos = node_positions.from_offset(end_offset)
-        comment_node = ParseNode(kind.COMMENT, opcode, start_pos, end_pos,
-                                 comment_text, [])
+        comment_node = ParseNode(kind.COMMENT, opcode,
+                                 script_offset + start_offset,
+                                 script_offset + end_offset, comment_text, [])
         comments.append(comment_node)
 
         # Start searching immediately after the start of the comment in case
         # this one was within a string or a regexp.
         pos = match.start()+1
 
-def parse(script, jsversion, error_callback, startpos=None):
-    """ All node positions will be relative to startpos. This allows scripts
-        to be embedded in a file (for example, HTML).
+def parse(script, jsversion, error_callback, start_offset=0):
+    """ All node positions will be relative to start_offset. This allows
+        scripts to be embedded in a file (for example, HTML).
     """
-    startpos = startpos or NodePos(0, 0)
+    assert not start_offset is None
     jsversion = jsversion or JSVersion.default()
     assert isvalidversion(jsversion), jsversion
     if jsversion.e4x:
-        error_callback(startpos.line, startpos.col, 'e4x_deprecated', {})
+        error_callback(start_offset, 'e4x_deprecated', {})
     return jsengine.parser.parse(script, jsversion.version,
-                                 error_callback,
-                                 startpos)
+                                 error_callback, start_offset)
 
-def filtercomments(possible_comments, node_positions, root_node):
+def filtercomments(possible_comments, root_node):
     comment_ignore_ranges = NodeRanges()
 
     def process(node):
         if node.kind == tok.STRING or \
                 (node.kind == tok.OBJECT and node.opcode == op.REGEXP):
-            start_offset = node_positions.to_offset(node.start_pos())
-            end_offset = node_positions.to_offset(node.end_pos())
-            comment_ignore_ranges.add(start_offset, end_offset)
+            comment_ignore_ranges.add(node.start_offset, node.end_offset)
         for kid in node.kids:
             if kid:
                 process(kid)
@@ -80,25 +77,22 @@ def filtercomments(possible_comments, node_positions, root_node):
 
     comments = []
     for comment in possible_comments:
-        start_offset = node_positions.to_offset(comment.start_pos())
-        end_offset = node_positions.to_offset(comment.end_pos())
-        if comment_ignore_ranges.has(start_offset):
+        if comment_ignore_ranges.has(comment.start_offset):
             continue
-        comment_ignore_ranges.add(start_offset, end_offset)
+        comment_ignore_ranges.add(comment.start_offset, comment.end_offset)
         comments.append(comment)
     return comments
 
-def findcomments(script, root_node, start_pos=None):
-    node_positions = NodePositions(script, start_pos)
-    possible_comments = findpossiblecomments(script, node_positions)
-    return filtercomments(possible_comments, node_positions, root_node)
+def findcomments(script, root_node, start_offset=0):
+    possible_comments = findpossiblecomments(script, start_offset)
+    return filtercomments(possible_comments, root_node)
 
 def is_compilable_unit(script, jsversion):
     jsversion = jsversion or JSVersion.default()
     assert isvalidversion(jsversion)
     return jsengine.parser.is_compilable_unit(script, jsversion.version)
 
-def _dump_node(node, depth=0):
+def _dump_node(node, node_positions, depth=0):
     if node is None:
         print '     '*depth,
         print '(None)'
@@ -107,7 +101,8 @@ def _dump_node(node, depth=0):
         print '     '*depth,
         print '%s, %s' % (repr(node.kind), repr(node.opcode))
         print '     '*depth,
-        print '%s - %s' % (node.start_pos(), node.end_pos())
+        print '%s - %s' % (node_positions.from_offset(node.start_offset),
+                           node_positions.from_offset(node.end_offset))
         if hasattr(node, 'atom'):
             print '     '*depth,
             print 'atom: %s' % node.atom
@@ -116,13 +111,14 @@ def _dump_node(node, depth=0):
             print '(no semicolon)'
         print
         for node in node.kids:
-            _dump_node(node, depth+1)
+            _dump_node(node, node_positions, depth+1)
 
 def dump_tree(script):
     def error_callback(line, col, msg, msg_args):
         print '(%i, %i): %s', (line, col, msg)
     node = parse(script, None, error_callback)
-    _dump_node(node)
+    node_positions = NodePositions(script)
+    _dump_node(node, node_positions)
 
 class TestComments(unittest.TestCase):
     def _test(self, script, expected_comments):
@@ -230,42 +226,42 @@ class TestCompilableUnit(unittest.TestCase):
 
 class TestLineOffset(unittest.TestCase):
     def testErrorPos(self):
-        def geterror(script, startpos):
+        def geterror(script, start_offset):
             errors = []
-            def onerror(line, col, msg, msg_args):
-                errors.append((line, col, msg, msg_args))
-            parse(script, None, onerror, startpos)
+            def onerror(offset, msg, msg_args):
+                errors.append((offset, msg, msg_args))
+            parse(script, None, onerror, start_offset)
             self.assertEquals(len(errors), 1)
             return errors[0]
-        self.assertEquals(geterror(' ?', None), (0, 1, 'syntax_error', {}))
-        self.assertEquals(geterror('\n ?', None), (1, 1, 'syntax_error', {}))
-        self.assertEquals(geterror(' ?', NodePos(1, 1)), (1, 2, 'syntax_error', {}))
-        self.assertEquals(geterror('\n ?', NodePos(1, 1)), (2, 1, 'syntax_error', {}))
+        self.assertEquals(geterror(' ?', 0), (1, 'syntax_error', {}))
+        self.assertEquals(geterror('\n ?', 0), (2, 'syntax_error', {}))
+        self.assertEquals(geterror(' ?', 2), (3, 'syntax_error', {}))
+        self.assertEquals(geterror('\n ?', 2), (4, 'syntax_error', {}))
     def testNodePos(self):
-        def getnodepos(script, startpos):
-            root = parse(script, None, None, startpos)
+        def getnodepos(script, start_offset):
+            root = parse(script, None, None, start_offset)
             self.assertEquals(root.kind, tok.LC)
             var, = root.kids
             self.assertEquals(var.kind, tok.VAR)
-            return var.start_pos()
-        self.assertEquals(getnodepos('var x;', None), NodePos(0, 0))
-        self.assertEquals(getnodepos(' var x;', None), NodePos(0, 1))
-        self.assertEquals(getnodepos('\n\n var x;', None), NodePos(2, 1))
-        self.assertEquals(getnodepos('var x;', NodePos(3, 4)), NodePos(3, 4))
-        self.assertEquals(getnodepos(' var x;', NodePos(3, 4)), NodePos(3, 5))
-        self.assertEquals(getnodepos('\n\n var x;', NodePos(3, 4)), NodePos(5, 1))
+            return var.start_offset
+        self.assertEquals(getnodepos('var x;', 0), 0)
+        self.assertEquals(getnodepos(' var x;', 0), 1)
+        self.assertEquals(getnodepos('\n\n var x;', 0), 3)
+        self.assertEquals(getnodepos('var x;', 7), 7)
+        self.assertEquals(getnodepos(' var x;', 7), 8)
+        self.assertEquals(getnodepos('\n\n var x;', 7), 10)
     def testComments(self):
-        def testcomment(comment, startpos, expectedpos):
+        def testcomment(comment, startpos, expected_offset):
             root = parse(comment, None, None, startpos)
             comment, = findcomments(comment, root, startpos)
-            self.assertEquals(comment.start_pos(), expectedpos)
+            self.assertEquals(comment.start_offset, expected_offset)
         for comment in ('/*comment*/', '//comment'):
-            testcomment(comment, None, NodePos(0, 0))
-            testcomment(' %s' % comment, None, NodePos(0, 1))
-            testcomment('\n\n %s' % comment, None, NodePos(2, 1))
-            testcomment('%s' % comment, NodePos(3, 4), NodePos(3, 4))
-            testcomment(' %s' % comment, NodePos(3, 4), NodePos(3, 5))
-            testcomment('\n\n %s' % comment, NodePos(3, 4), NodePos(5, 1))
+            testcomment(comment, 0, 0)
+            testcomment(' %s' % comment, 0, 1)
+            testcomment('\n\n %s' % comment, 0, 3)
+            testcomment('%s' % comment, 7, 7)
+            testcomment(' %s' % comment, 7, 8)
+            testcomment('\n\n %s' % comment, 7, 10)
 
 if __name__ == '__main__':
     unittest.main()

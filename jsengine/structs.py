@@ -90,26 +90,27 @@ class NodePos:
 class ParseNode:
     node_index = None
     parent = None
-    def __init__(self, kind_, op_, start_pos, end_pos, atom, kids,
+    def __init__(self, kind_, op_, start_offset, end_offset, atom, kids,
                  no_semi=False, end_comma=None, fn_args=None):
         assert not kids is None
         assert kind.contains(kind_)
         assert op_ is None or op.contains(op_)
         if kind_ == kind.RESERVED:
-            assert start_pos is None
-            assert end_pos is None
+            assert start_offset is None
+            assert end_offset is None
         else:
-            assert isinstance(start_pos, NodePos), repr(start_pos)
-            assert isinstance(end_pos, NodePos), repr(end_pos)
+            assert isinstance(start_offset, int), repr(start_offset)
+            assert isinstance(end_offset, int), repr(end_offset)
         assert end_comma is None or isinstance(end_comma, ParseNode)
-        assert (start_pos is None and end_pos is None) or start_pos <= end_pos
+        assert (start_offset is None and end_offset is None) or start_offset <= end_offset, \
+            (start_offset, end_offset)
         self.kind = kind_
         self.opcode = op_
         self.atom = atom
         self.kids = kids
         self._lefthandside = False
-        self.startpos = start_pos
-        self.endpos = end_pos
+        self.start_offset = start_offset
+        self.end_offset = end_offset
         self.no_semi = no_semi
         self.end_comma = end_comma
 
@@ -131,11 +132,6 @@ class ParseNode:
                self.dval = int(self.atom, 8)
             else:
                self.dval = float(self.atom)
-
-    def start_pos(self):
-        return self.startpos
-    def end_pos(self):
-        return self.endpos
 
     def is_equivalent(self, other, are_functions_equiv=False):
         if not other:

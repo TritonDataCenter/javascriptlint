@@ -10,12 +10,12 @@ _MESSAGES = (
 )
 
 class JSSyntaxError(BaseException):
-    def __init__(self, pos, msg, msg_args=None):
+    def __init__(self, offset, msg, msg_args=None):
         assert msg in _MESSAGES, msg
-        self.pos = pos
+        self.offset = offset
         self.msg = msg
         self.msg_args = msg_args or {}
     def __unicode__(self):
-        return '%s: %s' % (self.pos, self.msg)
+        return '%s: %s' % (self.offset, self.msg)
     def __repr__(self):
-        return 'JSSyntaxError(%r, %r, %r)' % (self.pos, self.msg. self.msg_args)
+        return 'JSSyntaxError(%r, %r, %r)' % (self.offset, self.msg. self.msg_args)

@@ -584,7 +584,7 @@ def _check_return_value(node):
     if filter(is_return_with_val, exit_points):
         # If the function returns a value, find all returns without a value.
         returns = filter(is_return_without_val, exit_points)
-        returns.sort(key=lambda node: node.start_pos())
+        returns.sort(key=lambda node: node.start_offset)
         if returns:
             raise LintWarning(returns[0], name=name)
         # Warn if the function sometimes exits naturally.

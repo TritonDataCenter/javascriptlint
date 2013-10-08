@@ -1,6 +1,5 @@
 # vim: sw=4 ts=4 et
 from jsengine import JSSyntaxError
-from jsengine.structs import NodePositions
 
 _WHITESPACE = u'\u0020\t\u000B\u000C\u00A0\uFFFF'
 _LINETERMINATOR = u'\u000A\u000D\u2028\u2029'
@@ -141,59 +140,60 @@ class Token:
     def __init__(self, tok, atom=None):
         self.tok = tok
         self.atom = atom
-        self.startpos = None
-        self.endpos = None
-    def setpos(self, startpos, endpos):
-        self.startpos = startpos
-        self.endpos = endpos
+        self.start_offset = None
+        self.end_offset = None
+    def set_offset(self, start_offset, end_offset):
+        self.start_offset = start_offset
+        self.end_offset = end_offset
     def __repr__(self):
         return 'Token(%r, %r)' % \
             (self.tok, self.atom)
 
 class TokenStream:
-    def __init__(self, content, startpos=None):
+    def __init__(self, content, start_offset=0):
+        assert isinstance(start_offset, int)
         self._content = content
-        self._pos = 0
-        self._watched_pos = None
-        self._nodepositions = NodePositions(content, startpos)
+        self._start_offset = start_offset
+        self._offset = 0
+        self._watched_offset = None
 
-    def getpos(self, offset=0):
-        return self._nodepositions.from_offset(self._pos+offset)
+    def get_offset(self, offset=0):
+        return self._start_offset + self._offset + offset
 
     def watch_reads(self):
-        self._watched_pos = self._pos
+        self._watched_offset = self._offset
 
     def get_watched_reads(self):
-        assert not self._watched_pos == None
-        s = self._content[self._watched_pos:self._pos]
-        self._watched_pos = None
+        assert not self._watched_offset == None
+        s = self._content[self._watched_offset:self._offset]
+        self._watched_offset = None
         return s
 
     def eof(self):
-        return self._pos >= len(self._content)
+        return self._offset >= len(self._content)
 
     def readchr(self):
-        if self._pos < len(self._content):
-            self._pos += 1
-            return self._content[self._pos - 1]
-        raise JSSyntaxError(self.getpos(-1), 'unexpected_eof')
+        if self._offset < len(self._content):
+            self._offset += 1
+            return self._content[self._offset - 1]
+        raise JSSyntaxError(self.get_offset(-1), 'unexpected_eof')
 
     def readif(self, len_, seq):
         s = self.peekif(len_, seq)
         if s:
             assert len(s) == len_
-            self._pos += len_
+            self._offset += len_
         return s
 
     def peekchr(self, seq):
-        if self._pos < len(self._content) and self._content[self._pos] in seq:
-            return self._content[self._pos]
+        if self._offset < len(self._content) and self._content[self._offset] in seq:
+            return self._content[self._offset]
 
     def peekif(self, len_, seq):
         """ Returns the string if found. Otherwise returns None.
         """
-        if self._pos + len_ <= len(self._content):
-            peeked = self._content[self._pos:self._pos+len_]
+        if self._offset + len_ <= len(self._content):
+            peeked = self._content[self._offset:self._offset+len_]
             if peeked in seq:
                 return peeked
 
@@ -230,7 +230,7 @@ class Tokenizer:
             self._peeked = []
             if peek.tok == tok.ERROR:
                 self._error = True
-                raise JSSyntaxError(peek.startpos, peek.atom or 'syntax_error')
+                raise JSSyntaxError(peek.start_offset, peek.atom or 'syntax_error')
             return peek
 
     def next_withregexp(self):
@@ -238,11 +238,11 @@ class Tokenizer:
         self._readahead()
         if self._peeked[-1].tok == tok.DIV:
             token = self._parse_rest_of_regexp()
-            token.setpos(self._peeked[-1].startpos, self._stream.getpos(-1))
+            token.set_offset(self._peeked[-1].start_offset, self._stream.get_offset(-1))
             self._peeked = []
             if token.tok == tok.ERROR:
                 self._error = True
-                raise JSSyntaxError(peek.startpos, peek.atom or 'syntax_error')
+                raise JSSyntaxError(peek.start_offset, peek.atom or 'syntax_error')
             return token
         else:
             return self.advance()
@@ -250,7 +250,7 @@ class Tokenizer:
     def expect(self, tok):
         encountered = self.advance()
         if encountered.tok != tok:
-            raise JSSyntaxError(encountered.startpos, 'expected_tok',
+            raise JSSyntaxError(encountered.start_offset, 'expected_tok',
                                 { 'token': tok })
         return encountered
 
@@ -259,7 +259,7 @@ class Tokenizer:
         if encountered.tok in list(_KEYWORDS.values()):
             encountered.tok = tok.NAME
         if encountered.tok != tok.NAME:
-            raise JSSyntaxError(encountered.startpos, 'syntax_error')
+            raise JSSyntaxError(encountered.start_offset, 'syntax_error')
         return encountered
 
     def _readahead(self):
@@ -271,13 +271,13 @@ class Tokenizer:
                                                 tok.HTML_COMMENT)
             return
         while True:
-            startpos = self._stream.getpos()
+            start_offset = self._stream.get_offset()
             peek = self._next()
-            endpos = self._stream.getpos(-1)
+            end_offset = self._stream.get_offset(-1)
             if peek.tok == tok.ERROR:
-                peek.setpos(endpos, endpos)
+                peek.set_offset(end_offset, end_offset)
             else:
-                peek.setpos(startpos, endpos)
+                peek.set_offset(start_offset, end_offset)
 
             self._peeked.append(peek)
             assert isinstance(peek.tok, _Token), repr(peek.tok)
@@ -398,7 +398,7 @@ class Tokenizer:
                 if stream.readif(1, 'eE'):
                     stream.readif(1, '+-')
                     if not stream.readif(1, _DIGITS):
-                        raise JSSyntaxError(stream.getpos(), 'syntax_error')
+                        raise JSSyntaxError(stream.get_offset(), 'syntax_error')
                     while stream.readif(1, _DIGITS):
                         pass
 
@@ -420,7 +420,7 @@ class Tokenizer:
                 return Token(d[None])
             except KeyError:
                 print('oops')
-                raise JSSyntaxError(stream.getpos(), 'syntax_error')
+                raise JSSyntaxError(stream.get_offset(), 'syntax_error')
 
         if c in _IDENT:
             s = ''
@@ -432,5 +432,5 @@ class Tokenizer:
             elif s:
                 return Token(tok.NAME, atom=s)
 
-        raise JSSyntaxError(stream.getpos(), 'unexpected_char',
+        raise JSSyntaxError(stream.get_offset(), 'unexpected_char',
                             { 'char': c })
