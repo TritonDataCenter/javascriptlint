@@ -10,139 +10,131 @@ _IDENT = u'abcdefghijklmnopqrstuvwxyz' + \
          u'ABCDEFGHIJKLMNOPQRSTUVWXYZ' + \
          u'$_'
 
-_PUNCTUATORS = {
-    "<<<=": "ASSIGN_ULSHIFT",
-    ">>>=": "ASSIGN_URSHIFT",
-    "===": "EQ_STRICT",
-    "!==": "NE_STRICT",
-    ">>>": "URSHIFT",
-    "<<=": "ASSIGN_LSHIFT",
-    ">>=": "ASSIGN_RSHIFT",
-    "<=": "LE",
-    ">=": "GE",
-    "==": "EQ",
-    "!=": "NE",
-    "++": "INC",
-    "--": "DEC",
-    "<<": "LSHIFT",
-    ">>": "RSHIFT",
-    "&&": "LOGICAL_AND",
-    "||": "LOGICAL_OR",
-    "+=": "ASSIGN_ADD",
-    "-=": "ASSIGN_SUB",
-    "*=": "ASSIGN_MUL",
-    "%=": "ASSIGN_MOD",
-    "&=": "ASSIGN_BIT_AND",
-    "|=": "ASSIGN_BIT_OR",
-    "^=": "ASSIGN_BIT_XOR",
-    "/=": "ASSIGN_DIV",
-    "{": "LBRACE",
-    "}": "RBRACE",
-    "(": "LPAREN",
-    ")": "RPAREN",
-    "[": "LBRACKET",
-    "]": "RBRACKET",
-    ".": "DOT",
-    ";": "SEMI",
-    ",": "COMMA",
-    "<": "LT",
-    ">": "GT",
-    "+": "ADD",
-    "-": "SUB",
-    "*": "MUL",
-    "%": "MOD",
-    "|": "BIT_OR",
-    "&": "BIT_AND",
-    "^": "BIT_XOR",
-    "!": "LOGICAL_NOT",
-    "~": "BIT_NOT",
-    "?": "QUESTION",
-    ":": "COLON",
-    "=": "ASSIGN",
-    "/": "DIV",
-    "!": "LOGICAL_NOT",
-}
-
-_KEYWORDS = dict((keyword, keyword.upper()) for keyword in [
-    'break',
-    'case',
-    'catch',
-    'continue',
-    'default',
-    'delete',
-    'do',
-    'else',
-    'false',
-    'finally',
-    'for',
-    'function',
-    'if',
-    'in',
-    'instanceof',
-    'new',
-    'null',
-    'return',
-    'switch',
-    'this',
-    'throw',
-    'true',
-    'typeof',
-    'try',
-    'var',
-    'void',
-    'while',
-    'with',
-])
-
-_TOKENS = [
-    'C_COMMENT',
-    'CPP_COMMENT',
-    'HTML_COMMENT',
-    'ERROR',
-    'EOF',
-    'EOL',
-    'NAME',
-    'NUMBER',
-    'OPERATOR',
-    'REGEXP',
-    'SPACE',
-    'STRING',
-]
+_ALL_TOKENS = []
 
 class _Token(object):
-    def __init__(self, name):
-        self._name = name
-
-    def __eq__(self, other):
-        assert isinstance(other, _Token)
-        return self is other
+    def __init__(self, category, literal):
+        self._category = category
+        self._literal = literal
+        _ALL_TOKENS.append(self)
 
     def __repr__(self):
-        return 'tok.%s' % self._name
+        return '_Token(%r, %r)' % (self._category, self._literal)
 
-class _Tokens:
+    @property
+    def category(self):
+        return self._category
+
+    @property
+    def literal(self):
+        return self._literal
+
+class _Tokens(object):
     def __init__(self):
-        for token in _TOKENS:
-            setattr(self, token, _Token(token))
+        # Load symbols
+        self.ASSIGN_ULSHIFT = _Token('sym', '<<<=')
+        self.ASSIGN_URSHIFT = _Token('sym', '>>>=')
+        self.EQ_STRICT = _Token('sym', '===')
+        self.NE_STRICT = _Token('sym', '!==')
+        self.URSHIFT = _Token('sym', '>>>')
+        self.ASSIGN_LSHIFT = _Token('sym', '<<=')
+        self.ASSIGN_RSHIFT = _Token('sym', '>>=')
+        self.LE = _Token('sym', '<=')
+        self.GE = _Token('sym', '>=')
+        self.EQ = _Token('sym', '==')
+        self.NE = _Token('sym', '!=')
+        self.INC = _Token('sym', '++')
+        self.DEC = _Token('sym', '--')
+        self.LSHIFT = _Token('sym', '<<')
+        self.RSHIFT = _Token('sym', '>>')
+        self.LOGICAL_AND = _Token('sym', '&&')
+        self.LOGICAL_OR = _Token('sym', '||')
+        self.ASSIGN_ADD = _Token('sym', '+=')
+        self.ASSIGN_SUB = _Token('sym', '-=')
+        self.ASSIGN_MUL = _Token('sym', '*=')
+        self.ASSIGN_MOD = _Token('sym', '%=')
+        self.ASSIGN_BIT_AND = _Token('sym', '&=')
+        self.ASSIGN_BIT_OR = _Token('sym', '|=')
+        self.ASSIGN_BIT_XOR = _Token('sym', '^=')
+        self.ASSIGN_DIV = _Token('sym', '/=')
+        self.LBRACE = _Token('sym', '{')
+        self.RBRACE = _Token('sym', '}')
+        self.LPAREN = _Token('sym', '(')
+        self.RPAREN = _Token('sym', ')')
+        self.LBRACKET = _Token('sym', '[')
+        self.RBRACKET = _Token('sym', ']')
+        self.DOT = _Token('sym', '.')
+        self.SEMI = _Token('sym', ';')
+        self.COMMA = _Token('sym', ',')
+        self.LT = _Token('sym', '<')
+        self.GT = _Token('sym', '>')
+        self.ADD = _Token('sym', '+')
+        self.SUB = _Token('sym', '-')
+        self.MUL = _Token('sym', '*')
+        self.MOD = _Token('sym', '%')
+        self.BIT_OR = _Token('sym', '|')
+        self.BIT_AND = _Token('sym', '&')
+        self.BIT_XOR = _Token('sym', '^')
+        self.LOGICAL_NOT = _Token('sym', '!')
+        self.BIT_NOT = _Token('sym', '~')
+        self.QUESTION = _Token('sym', '?')
+        self.COLON = _Token('sym', ':')
+        self.ASSIGN = _Token('sym', '=')
+        self.DIV = _Token('sym', '/')
 
-        for key, name in list(_KEYWORDS.items()):
-            _KEYWORDS[key] = _Token(name)
-            setattr(self, name, _KEYWORDS[key])
+        # Load keywords
+        self.BREAK = _Token('kw', 'break')
+        self.CASE = _Token('kw', 'case')
+        self.CATCH = _Token('kw', 'catch')
+        self.CONTINUE = _Token('kw', 'continue')
+        self.DEFAULT = _Token('kw', 'default')
+        self.DELETE = _Token('kw', 'delete')
+        self.DO = _Token('kw', 'do')
+        self.ELSE = _Token('kw', 'else')
+        self.FALSE = _Token('kw', 'false')
+        self.FINALLY = _Token('kw', 'finally')
+        self.FOR = _Token('kw', 'for')
+        self.FUNCTION = _Token('kw', 'function')
+        self.IF = _Token('kw', 'if')
+        self.IN = _Token('kw', 'in')
+        self.INSTANCEOF = _Token('kw', 'instanceof')
+        self.NEW = _Token('kw', 'new')
+        self.NULL = _Token('kw', 'null')
+        self.RETURN = _Token('kw', 'return')
+        self.SWITCH = _Token('kw', 'switch')
+        self.THIS = _Token('kw', 'this')
+        self.THROW = _Token('kw', 'throw')
+        self.TRUE = _Token('kw', 'true')
+        self.TYPEOF = _Token('kw', 'typeof')
+        self.TRY = _Token('kw', 'try')
+        self.VAR = _Token('kw', 'var')
+        self.VOID = _Token('kw', 'void')
+        self.WHILE = _Token('kw', 'while')
+        self.WITH = _Token('kw', 'with')
 
-        for key, name in list(_PUNCTUATORS.items()):
-            _PUNCTUATORS[key] = _Token(name)
-            setattr(self, name, _PUNCTUATORS[key])
+        # Load other tokens
+        self.C_COMMENT = _Token('other', '/*')
+        self.CPP_COMMENT = _Token('other', '//')
+        self.HTML_COMMENT = _Token('other', '<!--')
+        self.ERROR = _Token('other', 'err')
+        self.EOF = _Token('other', 'eof')
+        self.EOL = _Token('other', 'eol')
+        self.NAME = _Token('other', '(name)')
+        self.NUMBER = _Token('other', '(num)')
+        self.OPERATOR = _Token('other', '(op)')
+        self.REGEXP = _Token('other', '(re)')
+        self.SPACE = _Token('other', '(sp)')
+        self.STRING = _Token('other', '(str)')
 
 tok = _Tokens()
-
-
+_KEYWORDS = dict((t.literal, t) for t in _ALL_TOKENS if t.category == 'kw')
 _PUNCTUATOR_TREE = {}
-for punctuator in _PUNCTUATORS:
+for punctuator in (t for t in _ALL_TOKENS if t.category == 'sym'):
     d = _PUNCTUATOR_TREE
-    for c in punctuator:
+    for c in punctuator.literal:
         d = d.setdefault(c, {})
-    assert not None in d
-    d[None] = _PUNCTUATORS[punctuator]
+    assert not None in d, punctuator.literal
+    d[None] = punctuator
 
 class Token:
     def __init__(self, tok, atom=None):
