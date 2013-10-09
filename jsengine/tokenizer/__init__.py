@@ -96,23 +96,16 @@ class Tokenizer:
         else:
             return peek
 
-    def advance(self, skipspace=True, skipcomments=True):
+    def advance(self):
         assert not self._error
 
         self._readahead()
-        for i, peek in enumerate(self._peeked):
-            if not skipspace and peek.tok in (tok.EOL, tok.SPACE):
-                self._peeked = self._peeked[i+1:]
-                return peek
-            elif not skipcomments and peek.tok in (tok.C_COMMENT, tok.CPP_COMMENT, tok.HTML_COMMENT):
-                self._peeked = self._peeked[i+1:]
-                return peek
-        else:
-            self._peeked = []
-            if peek.tok == tok.ERROR:
-                self._error = True
-                raise JSSyntaxError(peek.start_offset, peek.atom or 'syntax_error')
-            return peek
+        peek = self._peeked[-1]
+        self._peeked = []
+        if peek.tok == tok.ERROR:
+            self._error = True
+            raise JSSyntaxError(peek.start_offset, peek.atom or 'syntax_error')
+        return peek
 
     def next_withregexp(self):
         assert not self._error
