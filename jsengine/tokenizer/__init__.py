@@ -14,6 +14,14 @@ _IDENT = u'abcdefghijklmnopqrstuvwxyz' + \
 _KEYWORDS = tok.getkeywords()
 _PUNCTUATOR_TREE = tok.get_punctuator_tree()
 
+def _str_has_chr(s, c):
+    assert len(c) <= 1
+    return c in s
+
+def _chr_to_str(c):
+    assert len(c) <= 1
+    return c
+
 class Token:
     def __init__(self, tok, atom=None):
         self.tok = tok
@@ -51,22 +59,34 @@ class TokenStream:
         return self._offset >= len(self._content)
 
     def readchr(self):
-        if self._offset < len(self._content):
-            self._offset += 1
-            return self._content[self._offset - 1]
-        raise JSSyntaxError(self.get_offset()-1, 'unexpected_eof')
+        c = self.peekchr()
+        if not c:
+            raise JSSyntaxError(self.get_offset(), 'unexpected_eof')
+        self._offset += 1
+        return c
 
-    def readchrif(self, seq):
-        s = self.peekchrif(seq)
+    def readchrif(self, expect):
+        if self.peekchr() == expect:
+            self._offset += 1
+            return expect
+        return ''
+
+    def readchrin(self, seq):
+        s = self.peekchrin(seq)
         if s:
-            assert len(s) == 1
             self._offset += 1
         return s
 
-    def peekchrif(self, seq):
-        if self._offset < len(self._content) and \
-                self._content[self._offset] in seq:
+    def peekchr(self):
+        if self._offset < len(self._content):
             return self._content[self._offset]
+        return ''
+
+    def peekchrin(self, seq):
+        c = self.peekchr()
+        if c and _str_has_chr(seq, c):
+            return c
+        return ''
 
     def readtextif(self, text):
         """ Returns the string if found. Otherwise returns None.
@@ -182,7 +202,7 @@ class Tokenizer:
 
         # TODO: Validate and save
         while True:
-            c = stream.readchrif(_IDENT)
+            c = stream.readchrin(_IDENT)
             if not c:
                 break
 
@@ -194,15 +214,17 @@ class Tokenizer:
         if stream.eof():
             return Token(tok.EOF)
 
+        stream.watch_reads()
+
         c = stream.readchr()
 
         # WHITESPACE
-        if c in _WHITESPACE or c in _LINETERMINATOR:
-            linebreak = c in _LINETERMINATOR
+        if _str_has_chr(_WHITESPACE, c) or _str_has_chr(_LINETERMINATOR, c):
+            linebreak = _str_has_chr(_LINETERMINATOR, c)
             while True:
-                if stream.readchrif(_LINETERMINATOR):
+                if stream.readchrin(_LINETERMINATOR):
                     linebreak = True
-                elif stream.readchrif(_WHITESPACE):
+                elif stream.readchrin(_WHITESPACE):
                     pass
                 else:
                     break
@@ -213,24 +235,24 @@ class Tokenizer:
 
         # COMMENTS
         if c == '/':
-            if stream.peekchrif("/"):
-                while not stream.eof() and not stream.peekchrif(_LINETERMINATOR):
+            if stream.peekchr() == '/':
+                while not stream.eof() and not stream.peekchrin(_LINETERMINATOR):
                     stream.readchr()
                 return Token(tok.CPP_COMMENT)
-            if stream.peekchrif("*"):
+            if stream.peekchr() == '*':
                 linebreak = False
                 while True:
                     if stream.eof():
                         return Token(tok.ERROR, atom='unterminated_comment')
                     c = stream.readchr()
-                    if c in _LINETERMINATOR:
+                    if _str_has_chr(_LINETERMINATOR, c):
                         linebreak = True
                     elif c == '*' and stream.readchrif('/'):
                         return Token(tok.C_COMMENT)
                 return Token(tok.EOF)
         elif c == '<':
             if stream.readtextif('!--'):
-                while not stream.eof() and not stream.peekchrif(_LINETERMINATOR):
+                while not stream.eof() and not stream.peekchrin(_LINETERMINATOR):
                     stream.readchr()
                 return Token(tok.HTML_COMMENT)
 
@@ -245,66 +267,64 @@ class Tokenizer:
                     c = stream.readchr()
                 elif c == quote:
                     return Token(tok.STRING, atom=s)
-                s += c
+                s += _chr_to_str(c)
 
         # NUMBERS
-        if c in _DIGITS or (c == '.' and stream.peekchrif(_DIGITS)):
+        if _str_has_chr(_DIGITS, c) or (c == '.' and stream.peekchrin(_DIGITS)):
             s = c # TODO
-            stream.watch_reads()
-            if c == '0' and stream.readchrif('xX'):
+            if c == '0' and stream.readchrin('xX'):
                 # Hex
-                while stream.readchrif(_HEX_DIGITS):
+                while stream.readchrin(_HEX_DIGITS):
                     pass
-            elif c == '0' and stream.readchrif(_DIGITS):
+            elif c == '0' and stream.readchrin(_DIGITS):
                 # Octal
-                while stream.readchrif(_DIGITS):
+                while stream.readchrin(_DIGITS):
                     pass
             else:
                 # Decimal
                 if c != '.':
-                    while stream.readchrif(_DIGITS):
+                    while stream.readchrin(_DIGITS):
                         pass
                     stream.readchrif('.')
 
-                while stream.readchrif(_DIGITS):
+                while stream.readchrin(_DIGITS):
                     pass
 
-                if stream.readchrif('eE'):
-                    stream.readchrif('+-')
-                    if not stream.readchrif(_DIGITS):
+                if stream.readchrin('eE'):
+                    stream.readchrin('+-')
+                    if not stream.readchrin(_DIGITS):
                         raise JSSyntaxError(stream.get_offset(), 'syntax_error')
-                    while stream.readchrif(_DIGITS):
+                    while stream.readchrin(_DIGITS):
                         pass
 
-                if stream.peekchrif(_IDENT):
+                if stream.peekchrin(_IDENT):
                     return Token(tok.ERROR)
 
-            atom = s + stream.get_watched_reads()
+            atom = stream.get_watched_reads()
             return Token(tok.NUMBER, atom=atom)
 
         if c in _PUNCTUATOR_TREE:
             d = _PUNCTUATOR_TREE[c]
             while True:
-                c = stream.readchrif(list(d.keys()))
+                c = stream.readchrin(u''.join(d.keys()))
                 if c:
                     d = d[c]
                 else:
                     break
             try:
-                return Token(d[None])
+                return Token(d[''])
             except KeyError:
                 print('oops')
                 raise JSSyntaxError(stream.get_offset(), 'syntax_error')
 
-        if c in _IDENT:
-            s = ''
-            while c:
-                s += c
-                c = stream.readchrif(_IDENT + _DIGITS)
-            if s in _KEYWORDS:
-                return Token(_KEYWORDS[s], atom=s)
-            elif s:
-                return Token(tok.NAME, atom=s)
+        if _str_has_chr(_IDENT, c):
+            while stream.readchrin(_IDENT + _DIGITS):
+                pass
+
+            atom = stream.get_watched_reads()
+            if atom in _KEYWORDS:
+                return Token(_KEYWORDS[atom], atom=atom)
+            return Token(tok.NAME, atom=atom)
 
         raise JSSyntaxError(stream.get_offset(), 'unexpected_char',
-                            { 'char': c })
+                            { 'char': _chr_to_str(c) })

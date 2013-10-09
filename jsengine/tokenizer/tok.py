@@ -123,6 +123,6 @@ def get_punctuator_tree():
         for c in punctuator.literal:
             leaf = leaf.setdefault(c, {})
         assert not None in leaf, punctuator.literal
-        leaf[None] = punctuator
+        leaf[''] = punctuator
     return tree
 
