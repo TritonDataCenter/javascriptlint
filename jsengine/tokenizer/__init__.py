@@ -178,24 +178,27 @@ class TokenStream:
             return self._content[self._offset - 1]
         raise JSSyntaxError(self.get_offset(-1), 'unexpected_eof')
 
-    def readif(self, len_, seq):
-        s = self.peekif(len_, seq)
+    def readchrif(self, seq):
+        s = self.peekchrif(seq)
         if s:
-            assert len(s) == len_
-            self._offset += len_
+            assert len(s) == 1
+            self._offset += 1
         return s
 
-    def peekchr(self, seq):
-        if self._offset < len(self._content) and self._content[self._offset] in seq:
+    def peekchrif(self, seq):
+        if self._offset < len(self._content) and \
+                self._content[self._offset] in seq:
             return self._content[self._offset]
 
-    def peekif(self, len_, seq):
+    def readtextif(self, text):
         """ Returns the string if found. Otherwise returns None.
         """
+        len_ = len(text)
         if self._offset + len_ <= len(self._content):
             peeked = self._content[self._offset:self._offset+len_]
-            if peeked in seq:
-                return peeked
+            if peeked == text:
+                self._offset += len_
+                return text
 
 class Tokenizer:
     def __init__(self, stream):
@@ -308,7 +311,7 @@ class Tokenizer:
 
         # TODO: Validate and save
         while True:
-            c = stream.readif(1, _IDENT)
+            c = stream.readchrif(_IDENT)
             if not c:
                 break
 
@@ -326,9 +329,9 @@ class Tokenizer:
         if c in _WHITESPACE or c in _LINETERMINATOR:
             linebreak = c in _LINETERMINATOR
             while True:
-                if stream.readif(1, _LINETERMINATOR):
+                if stream.readchrif(_LINETERMINATOR):
                     linebreak = True
-                elif stream.readif(1, _WHITESPACE):
+                elif stream.readchrif(_WHITESPACE):
                     pass
                 else:
                     break
@@ -339,11 +342,11 @@ class Tokenizer:
 
         # COMMENTS
         if c == '/':
-            if stream.peekchr("/"):
-                while not stream.eof() and not stream.peekif(1, _LINETERMINATOR):
+            if stream.peekchrif("/"):
+                while not stream.eof() and not stream.peekchrif(_LINETERMINATOR):
                     stream.readchr()
                 return Token(tok.CPP_COMMENT)
-            if stream.peekchr("*"):
+            if stream.peekchrif("*"):
                 linebreak = False
                 while True:
                     if stream.eof():
@@ -351,12 +354,12 @@ class Tokenizer:
                     c = stream.readchr()
                     if c in _LINETERMINATOR:
                         linebreak = True
-                    elif c == '*' and stream.readif(1, '/'):
+                    elif c == '*' and stream.readchrif('/'):
                         return Token(tok.C_COMMENT)
                 return Token(tok.EOF)
         elif c == '<':
-            if stream.readif(3, ('!--',)):
-                while not stream.eof() and not stream.peekif(1, _LINETERMINATOR):
+            if stream.readtextif('!--'):
+                while not stream.eof() and not stream.peekchrif(_LINETERMINATOR):
                     stream.readchr()
                 return Token(tok.HTML_COMMENT)
 
@@ -374,35 +377,35 @@ class Tokenizer:
                 s += c
 
         # NUMBERS
-        if c in _DIGITS or (c == '.' and stream.peekchr(_DIGITS)):
+        if c in _DIGITS or (c == '.' and stream.peekchrif(_DIGITS)):
             s = c # TODO
             stream.watch_reads()
-            if c == '0' and stream.readif(1, 'xX'):
+            if c == '0' and stream.readchrif('xX'):
                 # Hex
-                while stream.readif(1, _HEX_DIGITS):
+                while stream.readchrif(_HEX_DIGITS):
                     pass
-            elif c == '0' and stream.readif(1, _DIGITS):
+            elif c == '0' and stream.readchrif(_DIGITS):
                 # Octal
-                while stream.readif(1, _DIGITS):
+                while stream.readchrif(_DIGITS):
                     pass
             else:
                 # Decimal
                 if c != '.':
-                    while stream.readif(1, _DIGITS):
+                    while stream.readchrif(_DIGITS):
                         pass
-                    stream.readif(1, '.')
+                    stream.readchrif('.')
 
-                while stream.readif(1, _DIGITS):
+                while stream.readchrif(_DIGITS):
                     pass
 
-                if stream.readif(1, 'eE'):
-                    stream.readif(1, '+-')
-                    if not stream.readif(1, _DIGITS):
+                if stream.readchrif('eE'):
+                    stream.readchrif('+-')
+                    if not stream.readchrif(_DIGITS):
                         raise JSSyntaxError(stream.get_offset(), 'syntax_error')
-                    while stream.readif(1, _DIGITS):
+                    while stream.readchrif(_DIGITS):
                         pass
 
-                if stream.peekchr(_IDENT):
+                if stream.peekchrif(_IDENT):
                     return Token(tok.ERROR)
 
             atom = s + stream.get_watched_reads()
@@ -411,7 +414,7 @@ class Tokenizer:
         if c in _PUNCTUATOR_TREE:
             d = _PUNCTUATOR_TREE[c]
             while True:
-                c = stream.readif(1, list(d.keys()))
+                c = stream.readchrif(list(d.keys()))
                 if c:
                     d = d[c]
                 else:
@@ -426,7 +429,7 @@ class Tokenizer:
             s = ''
             while c:
                 s += c
-                c = stream.readif(1, _IDENT + _DIGITS)
+                c = stream.readchrif(_IDENT + _DIGITS)
             if s in _KEYWORDS:
                 return Token(_KEYWORDS[s], atom=s)
             elif s:
