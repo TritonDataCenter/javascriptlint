@@ -785,7 +785,7 @@ def _statement(t):
 
     elif x.tok not in (tok.LBRACE, tok.FUNCTION):
         expr = _expression(t, True)
-        if expr.kind == tok.NAME and t.peek().tok == tok.COLON:
+        if expr.kind == kind.NAME and t.peek().tok == tok.COLON:
             t.expect(tok.COLON)
             stmt = _statement(t)
             return ParseNode(kind.COLON, op.NAME, expr.start_offset,

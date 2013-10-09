@@ -70,9 +70,18 @@ _OPS = [
     'VOID',
     'CALL',
 ]
-class _Op(str):
+class _Op(object):
+    def __init__(self, name):
+        self._name = name
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        assert isinstance(other, _Op), repr(other)
+        return self is other
+
     def __repr__(self):
-        return 'op.%s' % self
+        return 'op.%s' % self._name
 
 class _Ops:
     NOP = None # TODO!
@@ -80,6 +89,6 @@ class _Ops:
         for op in _OPS:
             setattr(self, op, _Op(op))
     def contains(self, item):
-        return isinstance(item, _Op) and \
-            getattr(self, item) is item
+        return isinstance(item, _Op)
+
 op = _Ops()

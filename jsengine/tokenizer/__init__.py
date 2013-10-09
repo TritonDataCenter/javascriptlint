@@ -109,8 +109,16 @@ _TOKENS = [
     'STRING',
 ]
 
-class _Token(str):
-    pass
+class _Token(object):
+    def __init__(self, name):
+        self._name = name
+
+    def __eq__(self, other):
+        assert isinstance(other, _Token)
+        return self is other
+
+    def __repr__(self):
+        return 'tok.%s' % self._name
 
 class _Tokens:
     def __init__(self):

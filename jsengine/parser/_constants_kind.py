@@ -65,15 +65,22 @@ _KINDS = [
     'STRING',
     'YIELD', # TODO
 ]
-class _Kind(str):
+class _Kind(object):
+    def __init__(self, name):
+        self._name = name
+
+    def __eq__(self, other):
+        assert isinstance(other, _Kind), repr(other)
+        return self is other
+
     def __repr__(self):
-        return 'kind.%s' % self
+        return 'kind.%s' % self._name
 
 class _Kinds:
     def __init__(self):
         for kind in _KINDS:
             setattr(self, kind, _Kind(kind))
     def contains(self, item):
-        return isinstance(item, _Kind) and \
-            getattr(self, item) is item
+        return isinstance(item, _Kind)
+
 kind = _Kinds()
