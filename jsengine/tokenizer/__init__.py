@@ -156,8 +156,8 @@ class TokenStream:
         self._offset = 0
         self._watched_offset = None
 
-    def get_offset(self, offset=0):
-        return self._start_offset + self._offset + offset
+    def get_offset(self):
+        return self._start_offset + self._offset
 
     def watch_reads(self):
         self._watched_offset = self._offset
@@ -175,7 +175,7 @@ class TokenStream:
         if self._offset < len(self._content):
             self._offset += 1
             return self._content[self._offset - 1]
-        raise JSSyntaxError(self.get_offset(-1), 'unexpected_eof')
+        raise JSSyntaxError(self.get_offset()-1, 'unexpected_eof')
 
     def readchrif(self, seq):
         s = self.peekchrif(seq)
@@ -240,7 +240,7 @@ class Tokenizer:
         self._readahead()
         if self._peeked[-1].tok == tok.DIV:
             token = self._parse_rest_of_regexp()
-            token.set_offset(self._peeked[-1].start_offset, self._stream.get_offset(-1))
+            token.set_offset(self._peeked[-1].start_offset, self._stream.get_offset()-1)
             self._peeked = []
             if token.tok == tok.ERROR:
                 self._error = True
@@ -275,7 +275,7 @@ class Tokenizer:
         while True:
             start_offset = self._stream.get_offset()
             peek = self._next()
-            end_offset = self._stream.get_offset(-1)
+            end_offset = self._stream.get_offset()-1
             if peek.tok == tok.ERROR:
                 peek.set_offset(end_offset, end_offset)
             else:
