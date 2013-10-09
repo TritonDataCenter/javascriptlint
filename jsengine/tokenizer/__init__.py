@@ -1,5 +1,6 @@
 # vim: sw=4 ts=4 et
 from jsengine import JSSyntaxError
+import tok
 
 _WHITESPACE = u'\u0020\t\u000B\u000C\u00A0\uFFFF'
 _LINETERMINATOR = u'\u000A\u000D\u2028\u2029'
@@ -10,130 +11,8 @@ _IDENT = u'abcdefghijklmnopqrstuvwxyz' + \
          u'ABCDEFGHIJKLMNOPQRSTUVWXYZ' + \
          u'$_'
 
-_ALL_TOKENS = []
-
-class _Token(object):
-    def __init__(self, category, literal):
-        self._category = category
-        self._literal = literal
-        _ALL_TOKENS.append(self)
-
-    def __repr__(self):
-        return '_Token(%r, %r)' % (self._category, self._literal)
-
-    @property
-    def category(self):
-        return self._category
-
-    @property
-    def literal(self):
-        return self._literal
-
-class _Tokens(object):
-    # Symbols
-    ASSIGN_ULSHIFT = _Token('sym', '<<<=')
-    ASSIGN_URSHIFT = _Token('sym', '>>>=')
-    EQ_STRICT = _Token('sym', '===')
-    NE_STRICT = _Token('sym', '!==')
-    URSHIFT = _Token('sym', '>>>')
-    ASSIGN_LSHIFT = _Token('sym', '<<=')
-    ASSIGN_RSHIFT = _Token('sym', '>>=')
-    LE = _Token('sym', '<=')
-    GE = _Token('sym', '>=')
-    EQ = _Token('sym', '==')
-    NE = _Token('sym', '!=')
-    INC = _Token('sym', '++')
-    DEC = _Token('sym', '--')
-    LSHIFT = _Token('sym', '<<')
-    RSHIFT = _Token('sym', '>>')
-    LOGICAL_AND = _Token('sym', '&&')
-    LOGICAL_OR = _Token('sym', '||')
-    ASSIGN_ADD = _Token('sym', '+=')
-    ASSIGN_SUB = _Token('sym', '-=')
-    ASSIGN_MUL = _Token('sym', '*=')
-    ASSIGN_MOD = _Token('sym', '%=')
-    ASSIGN_BIT_AND = _Token('sym', '&=')
-    ASSIGN_BIT_OR = _Token('sym', '|=')
-    ASSIGN_BIT_XOR = _Token('sym', '^=')
-    ASSIGN_DIV = _Token('sym', '/=')
-    LBRACE = _Token('sym', '{')
-    RBRACE = _Token('sym', '}')
-    LPAREN = _Token('sym', '(')
-    RPAREN = _Token('sym', ')')
-    LBRACKET = _Token('sym', '[')
-    RBRACKET = _Token('sym', ']')
-    DOT = _Token('sym', '.')
-    SEMI = _Token('sym', ';')
-    COMMA = _Token('sym', ',')
-    LT = _Token('sym', '<')
-    GT = _Token('sym', '>')
-    ADD = _Token('sym', '+')
-    SUB = _Token('sym', '-')
-    MUL = _Token('sym', '*')
-    MOD = _Token('sym', '%')
-    BIT_OR = _Token('sym', '|')
-    BIT_AND = _Token('sym', '&')
-    BIT_XOR = _Token('sym', '^')
-    LOGICAL_NOT = _Token('sym', '!')
-    BIT_NOT = _Token('sym', '~')
-    QUESTION = _Token('sym', '?')
-    COLON = _Token('sym', ':')
-    ASSIGN = _Token('sym', '=')
-    DIV = _Token('sym', '/')
-
-    # Keywords
-    BREAK = _Token('kw', 'break')
-    CASE = _Token('kw', 'case')
-    CATCH = _Token('kw', 'catch')
-    CONTINUE = _Token('kw', 'continue')
-    DEFAULT = _Token('kw', 'default')
-    DELETE = _Token('kw', 'delete')
-    DO = _Token('kw', 'do')
-    ELSE = _Token('kw', 'else')
-    FALSE = _Token('kw', 'false')
-    FINALLY = _Token('kw', 'finally')
-    FOR = _Token('kw', 'for')
-    FUNCTION = _Token('kw', 'function')
-    IF = _Token('kw', 'if')
-    IN = _Token('kw', 'in')
-    INSTANCEOF = _Token('kw', 'instanceof')
-    NEW = _Token('kw', 'new')
-    NULL = _Token('kw', 'null')
-    RETURN = _Token('kw', 'return')
-    SWITCH = _Token('kw', 'switch')
-    THIS = _Token('kw', 'this')
-    THROW = _Token('kw', 'throw')
-    TRUE = _Token('kw', 'true')
-    TYPEOF = _Token('kw', 'typeof')
-    TRY = _Token('kw', 'try')
-    VAR = _Token('kw', 'var')
-    VOID = _Token('kw', 'void')
-    WHILE = _Token('kw', 'while')
-    WITH = _Token('kw', 'with')
-
-    # Other tokens
-    C_COMMENT = _Token('other', '/*')
-    CPP_COMMENT = _Token('other', '//')
-    HTML_COMMENT = _Token('other', '<!--')
-    ERROR = _Token('other', 'err')
-    EOF = _Token('other', 'eof')
-    EOL = _Token('other', 'eol')
-    NAME = _Token('other', '(name)')
-    NUMBER = _Token('other', '(num)')
-    OPERATOR = _Token('other', '(op)')
-    REGEXP = _Token('other', '(re)')
-    SPACE = _Token('other', '(sp)')
-    STRING = _Token('other', '(str)')
-
-tok = _Tokens()
-_KEYWORDS = dict((t.literal, t) for t in _ALL_TOKENS if t.category == 'kw')
-_PUNCTUATOR_TREE = {}
-for punctuator in (t for t in _ALL_TOKENS if t.category == 'sym'):
-    d = _PUNCTUATOR_TREE
-    for c in punctuator.literal:
-        d = d.setdefault(c, {})
-    assert not None in d, punctuator.literal
-    d[None] = punctuator
+_KEYWORDS = tok.getkeywords()
+_PUNCTUATOR_TREE = tok.get_punctuator_tree()
 
 class Token:
     def __init__(self, tok, atom=None):
@@ -282,7 +161,7 @@ class Tokenizer:
                 peek.set_offset(start_offset, end_offset)
 
             self._peeked.append(peek)
-            assert isinstance(peek.tok, _Token), repr(peek.tok)
+            assert isinstance(peek.tok, tok.TokenType), repr(peek.tok)
             if peek.tok not in (tok.EOL, tok.SPACE,
                                 tok.C_COMMENT, tok.CPP_COMMENT,
                                 tok.HTML_COMMENT):
