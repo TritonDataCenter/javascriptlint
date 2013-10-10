@@ -121,8 +121,8 @@ def get_punctuator_tree():
     for punctuator in (t for t in _ALL_TOKENS if t.category == 'sym'):
         leaf = tree
         for c in punctuator.literal:
-            leaf = leaf.setdefault(c, {})
+            leaf = leaf.setdefault(ord(c), {})
         assert not None in leaf, punctuator.literal
-        leaf[''] = punctuator
+        leaf[-1] = punctuator
     return tree
 

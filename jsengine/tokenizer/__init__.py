@@ -14,13 +14,42 @@ _IDENT = u'abcdefghijklmnopqrstuvwxyz' + \
 _KEYWORDS = tok.getkeywords()
 _PUNCTUATOR_TREE = tok.get_punctuator_tree()
 
-def _str_has_chr(s, c):
-    assert len(c) <= 1
-    return c in s
+class _Char(object):
+    def __init__(self, u):
+        assert isinstance(u, int) or u is None, u
+        self._u = u
 
-def _chr_to_str(c):
-    assert len(c) <= 1
-    return c
+    @classmethod
+    def fromstr(cls, s, i):
+        return _Char(ord(s[i]))
+
+    @classmethod
+    def ord(cls, s):
+        return _Char(ord(s))
+
+    @property
+    def uval(self):
+        return self._u
+
+    def tostr(self):
+        if self._u is None:
+            return unicode()
+        return unichr(self._u)
+
+    def instr(self, s):
+        if self._u is None:
+            return False
+        return s.find(unichr(self._u)) != -1
+
+    def __hash__(self):
+        return hash(self._u)
+
+    def __eq__(self, other):
+        assert isinstance(other, _Char), other
+        return self._u == other._u
+
+    def __nonzero__(self):
+        return not self._u is None
 
 class Token:
     def __init__(self, tok, atom=None):
@@ -69,7 +98,7 @@ class TokenStream:
         if self.peekchr() == expect:
             self._offset += 1
             return expect
-        return ''
+        return _Char(None)
 
     def readchrin(self, seq):
         s = self.peekchrin(seq)
@@ -79,14 +108,14 @@ class TokenStream:
 
     def peekchr(self):
         if self._offset < len(self._content):
-            return self._content[self._offset]
-        return ''
+            return _Char.fromstr(self._content, self._offset)
+        return _Char(None)
 
     def peekchrin(self, seq):
         c = self.peekchr()
-        if c and _str_has_chr(seq, c):
+        if c and c.instr(seq):
             return c
-        return ''
+        return _Char(None)
 
     def readtextif(self, text):
         """ Returns the string if found. Otherwise returns None.
@@ -184,20 +213,20 @@ class Tokenizer:
         stream = self._stream
         while True:
             c = stream.readchr()
-            if c == '\\':
+            if c == _Char.ord('\\'):
                 c = stream.readchr()
-                if c == '\n':
+                if c == _Char.ord('\n'):
                     return Token(tok.ERROR)
-            elif c == '[':
+            elif c == _Char.ord('['):
                 while True:
                     c = stream.readchr()
-                    if c == '\n':
+                    if c == _Char.ord('\n'):
                         return Token(tok.ERROR)
-                    elif c == ']':
+                    elif c == _Char.ord(']'):
                         break
-            elif c == '\n':
+            elif c == _Char.ord('\n'):
                 return Token(tok.ERROR)
-            elif c == '/':
+            elif c == _Char.ord('/'):
                 break
 
         # TODO: Validate and save
@@ -219,8 +248,8 @@ class Tokenizer:
         c = stream.readchr()
 
         # WHITESPACE
-        if _str_has_chr(_WHITESPACE, c) or _str_has_chr(_LINETERMINATOR, c):
-            linebreak = _str_has_chr(_LINETERMINATOR, c)
+        if c.instr(_WHITESPACE) or c.instr(_LINETERMINATOR):
+            linebreak = c.instr(_LINETERMINATOR)
             while True:
                 if stream.readchrin(_LINETERMINATOR):
                     linebreak = True
@@ -234,49 +263,49 @@ class Tokenizer:
                 return Token(tok.SPACE)
 
         # COMMENTS
-        if c == '/':
-            if stream.peekchr() == '/':
+        if c == _Char.ord('/'):
+            if stream.peekchr() == _Char.ord('/'):
                 while not stream.eof() and not stream.peekchrin(_LINETERMINATOR):
                     stream.readchr()
                 return Token(tok.CPP_COMMENT)
-            if stream.peekchr() == '*':
+            if stream.peekchr() == _Char.ord('*'):
                 linebreak = False
                 while True:
                     if stream.eof():
                         return Token(tok.ERROR, atom='unterminated_comment')
                     c = stream.readchr()
-                    if _str_has_chr(_LINETERMINATOR, c):
+                    if c.instr(_LINETERMINATOR):
                         linebreak = True
-                    elif c == '*' and stream.readchrif('/'):
+                    elif c == _Char.ord('*') and stream.readchrif(_Char.ord('/')):
                         return Token(tok.C_COMMENT)
                 return Token(tok.EOF)
-        elif c == '<':
+        elif c == _Char.ord('<'):
             if stream.readtextif('!--'):
                 while not stream.eof() and not stream.peekchrin(_LINETERMINATOR):
                     stream.readchr()
                 return Token(tok.HTML_COMMENT)
 
         # STRING LITERALS
-        if c == '"' or c == "'":
+        if c == _Char.ord('"') or c == _Char.ord("'"):
             # TODO: Decode
             s = ''
             quote = c
             while True:
                 c = stream.readchr()
-                if c == '\\':
+                if c == _Char.ord('\\'):
                     c = stream.readchr()
                 elif c == quote:
                     return Token(tok.STRING, atom=s)
-                s += _chr_to_str(c)
+                s += c.tostr()
 
         # NUMBERS
-        if _str_has_chr(_DIGITS, c) or (c == '.' and stream.peekchrin(_DIGITS)):
+        if c.instr(_DIGITS) or (c == _Char.ord('.') and stream.peekchrin(_DIGITS)):
             s = c # TODO
-            if c == '0' and stream.readchrin('xX'):
+            if c == _Char.ord('0') and stream.readchrin('xX'):
                 # Hex
                 while stream.readchrin(_HEX_DIGITS):
                     pass
-            elif c == '0' and stream.readchrin(_DIGITS):
+            elif c == _Char.ord('0') and stream.readchrin(_DIGITS):
                 # Octal
                 while stream.readchrin(_DIGITS):
                     pass
@@ -285,7 +314,7 @@ class Tokenizer:
                 if c != '.':
                     while stream.readchrin(_DIGITS):
                         pass
-                    stream.readchrif('.')
+                    stream.readchrif(_Char.ord('.'))
 
                 while stream.readchrin(_DIGITS):
                     pass
@@ -303,21 +332,22 @@ class Tokenizer:
             atom = stream.get_watched_reads()
             return Token(tok.NUMBER, atom=atom)
 
-        if c in _PUNCTUATOR_TREE:
-            d = _PUNCTUATOR_TREE[c]
+        if c.uval in _PUNCTUATOR_TREE:
+            d = _PUNCTUATOR_TREE[c.uval]
             while True:
-                c = stream.readchrin(u''.join(d.keys()))
-                if c:
-                    d = d[c]
+                c = stream.peekchr()
+                if c and c.uval in d:
+                    stream.readchr()
+                    d = d[c.uval]
                 else:
                     break
             try:
-                return Token(d[''])
+                return Token(d[-1])
             except KeyError:
                 print('oops')
                 raise JSSyntaxError(stream.get_offset(), 'syntax_error')
 
-        if _str_has_chr(_IDENT, c):
+        if c.instr(_IDENT):
             while stream.readchrin(_IDENT + _DIGITS):
                 pass
 
@@ -327,4 +357,4 @@ class Tokenizer:
             return Token(tok.NAME, atom=atom)
 
         raise JSSyntaxError(stream.get_offset(), 'unexpected_char',
-                            { 'char': _chr_to_str(c) })
+                            { 'char': c.tostr() })
