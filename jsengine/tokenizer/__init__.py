@@ -5,14 +5,10 @@ import tok
 _WHITESPACE = u'\u0020\t\u000B\u000C\u00A0\uFFFF'
 _LINETERMINATOR = u'\u000A\u000D\u2028\u2029'
 _DIGITS = u'0123456789'
-_DOT_DIGITS = [u'.%s' % digit for digit in _DIGITS]
 _HEX_DIGITS = _DIGITS + u'abcdefABCDEF'
 _IDENT = u'abcdefghijklmnopqrstuvwxyz' + \
          u'ABCDEFGHIJKLMNOPQRSTUVWXYZ' + \
          u'$_'
-
-_KEYWORDS = tok.getkeywords()
-_PUNCTUATOR_TREE = tok.get_punctuator_tree()
 
 class _Char(object):
     def __init__(self, u):
@@ -179,7 +175,7 @@ class Tokenizer:
 
     def expect_identifiername(self):
         encountered = self.advance()
-        if encountered.tok in list(_KEYWORDS.values()):
+        if tok.keywords.has(encountered.tok) != -1:
             encountered.tok = tok.NAME
         if encountered.tok != tok.NAME:
             raise JSSyntaxError(encountered.start_offset, 'syntax_error')
@@ -332,29 +328,28 @@ class Tokenizer:
             atom = stream.get_watched_reads()
             return Token(tok.NUMBER, atom=atom)
 
-        if c.uval in _PUNCTUATOR_TREE:
-            d = _PUNCTUATOR_TREE[c.uval]
+        if tok.punctuators.hasprefix(c.tostr()):
+            s = c.tostr()
             while True:
                 c = stream.peekchr()
-                if c and c.uval in d:
+                if c and tok.punctuators.hasprefix(s + c.tostr()):
+                    s += c.tostr()
                     stream.readchr()
-                    d = d[c.uval]
                 else:
                     break
-            try:
-                return Token(d[-1])
-            except KeyError:
-                print('oops')
+            d = tok.punctuators.get(s)
+            if not d:
                 raise JSSyntaxError(stream.get_offset(), 'syntax_error')
-
+            return Token(d)
         if c.instr(_IDENT):
             while stream.readchrin(_IDENT + _DIGITS):
                 pass
 
             atom = stream.get_watched_reads()
-            if atom in _KEYWORDS:
-                return Token(_KEYWORDS[atom], atom=atom)
-            return Token(tok.NAME, atom=atom)
+            tt = tok.keywords.get(atom, tok.NAME)
+            t = Token(tt)
+            t.atom = atom
+            return t
 
         raise JSSyntaxError(stream.get_offset(), 'unexpected_char',
                             { 'char': c.tostr() })

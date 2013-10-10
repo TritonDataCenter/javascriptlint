@@ -10,12 +10,10 @@ class TokenType(object):
     def __repr__(self):
         return 'TokenType(%r, %r)' % (self._category, self._literal)
 
-    @property
-    def category(self):
+    def getcategory(self):
         return self._category
 
-    @property
-    def literal(self):
+    def getliteral(self):
         return self._literal
 
 # Symbols
@@ -113,16 +111,44 @@ REGEXP = TokenType('other', '(re)')
 SPACE = TokenType('other', '(sp)')
 STRING = TokenType('other', '(str)')
 
-def getkeywords():
-    return dict((t.literal, t) for t in _ALL_TOKENS if t.category == 'kw')
+# Freeze the list of keywords
+_ALL_TOKENS = tuple(_ALL_TOKENS)
 
-def get_punctuator_tree():
-    tree = {}
-    for punctuator in (t for t in _ALL_TOKENS if t.category == 'sym'):
-        leaf = tree
-        for c in punctuator.literal:
-            leaf = leaf.setdefault(ord(c), {})
-        assert not None in leaf, punctuator.literal
-        leaf[-1] = punctuator
-    return tree
+class _Keywords(object):
+    def __init__(self):
+        self._d = {}
+        for tt in _ALL_TOKENS:
+            if tt.getcategory() == 'kw':
+                self._d[tt.getliteral()] = tt
 
+    def get(self, literal, default):
+        return self._d.get(literal, default)
+
+    def has(self, tok):
+        for iter in self._d.values():
+            if iter == tok:
+                return True
+        return False
+
+keywords = _Keywords()
+
+class _Punctuators(object):
+    def __init__(self):
+        self._prefixes = {}
+        self._punctuators = {}
+
+        for t in _ALL_TOKENS:
+            if t.getcategory() == 'sym':
+                literal = t.getliteral()
+                for i in range(len(literal)):
+                    prefix = literal[:i+1]
+                    self._prefixes[prefix] = True
+                self._punctuators[literal] = t
+
+    def hasprefix(self, prefix):
+        return self._prefixes.get(prefix, False)
+
+    def get(self, literal):
+        return self._punctuators.get(literal)
+
+punctuators = _Punctuators()
