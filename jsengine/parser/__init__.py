@@ -854,7 +854,7 @@ class TestParser(unittest.TestCase):
         try:
             parsestring('/*')
         except JSSyntaxError as error:
-            self.assertEqual(error.pos, NodePos(0, 1))
+            self.assertEqual(error.offset, 1)
         else:
             self.assert_(False)
     def testObjectEndComma(self):
@@ -867,9 +867,9 @@ class TestParser(unittest.TestCase):
         self.assertEquals(left.atom, 'a')
         self.assertEquals(right.kind, kind.RC)
         node = right.end_comma
-        self.assertEquals(node.kind, tok.COMMA)
-        self.assertEquals(node.start_offset, NodePos(0, 6))
-        self.assertEquals(node.end_offset, NodePos(0, 6))
+        self.assertEquals(node.kind, kind.COMMA)
+        self.assertEquals(node.start_offset, 6)
+        self.assertEquals(node.end_offset, 6)
     def _testArrayEndComma(self, script, col):
         root = parsestring(script)
         node, = root.kids
@@ -884,9 +884,9 @@ class TestParser(unittest.TestCase):
         if col is None:
             self.assert_(node is None)
         else:
-            self.assertEquals(node.kind, tok.COMMA)
-            self.assertEquals(node.start_offset, NodePos(0, col))
-            self.assertEquals(node.end_offset, NodePos(0, col))
+            self.assertEquals(node.kind, kind.COMMA)
+            self.assertEquals(node.start_offset, col)
+            self.assertEquals(node.end_offset, col)
     def testArrayEndComma(self):
         self._testArrayEndComma('a=[,]', 3)
         self._testArrayEndComma('a=[a,]', 4)

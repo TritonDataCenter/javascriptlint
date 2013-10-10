@@ -12,6 +12,7 @@ import conf
 import fs
 import htmlparse
 import jsparse
+import jsengine.parser
 import lint
 import util
 import version
@@ -123,7 +124,7 @@ def _main():
 
     if options.unittest:
         suite = unittest.TestSuite();
-        for module in [conf, htmlparse, jsparse, lint, util]:
+        for module in [conf, htmlparse, jsengine.parser, jsparse, lint, util]:
             suite.addTest(unittest.findTestCases(module))
 
         runner = unittest.TextTestRunner(verbosity=options.verbosity)
