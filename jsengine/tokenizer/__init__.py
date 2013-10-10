@@ -165,7 +165,7 @@ class Tokenizer:
             self._peeked = []
             if token.tok == tok.ERROR:
                 self._error = True
-                raise JSSyntaxError(peek.start_offset, peek.atom or 'syntax_error')
+                raise JSSyntaxError(token.start_offset, token.atom or 'syntax_error')
             return token
         else:
             return self.advance()

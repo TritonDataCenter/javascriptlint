@@ -850,6 +850,13 @@ class TestParser(unittest.TestCase):
         self.assert_(is_compilable_unit('', 'default'))
         self.assert_(is_compilable_unit('/**/', 'default'))
         self.assert_(not is_compilable_unit('/*', 'default'))
+    def testRegExpLineBreak(self):
+        try:
+            parsestring('re = /[\n');
+        except JSSyntaxError as error:
+            self.assertEqual(error.offset, 5)
+        else:
+            self.assert_(False)
     def testUnterminatedComment(self):
         try:
             parsestring('/*')
