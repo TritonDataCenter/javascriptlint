@@ -662,6 +662,9 @@ def _get_expected_function_name(node):
         if parent.kids[0].kind == tok.NAME and \
            parent.kids[0].opcode == op.SETNAME:
             return parent.kids[0].atom
+        if parent.kids[0].kind == tok.DOT and \
+           parent.kids[0].opcode == op.SETPROP:
+            return parent.kids[0].atom
         return '<error>'
 
     # Object literal.

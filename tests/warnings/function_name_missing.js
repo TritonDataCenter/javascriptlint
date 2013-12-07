@@ -26,5 +26,14 @@ function function_name_missing() {
 
     function x() {
     }
+
+    function Class() {
+    }
+    Class.prototype.get = function () { /*warning:function_name_missing*/
+        return this.value;
+    };
+    Class.prototype.set = function set(value) {
+        this.value = value;
+    };
 }
 

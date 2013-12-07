@@ -32,5 +32,14 @@ function function_name_mismatch() {
 
     function x() {
     }
+
+    function Class() {
+    }
+    Class.prototype.get = function gt() { /*warning:function_name_mismatch*/
+        return this.value;
+    };
+    Class.prototype.set = function set(value) {
+        this.value = value;
+    };
 }
 
