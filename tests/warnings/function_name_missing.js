@@ -28,6 +28,12 @@ function function_name_missing() {
     }
 
     function Class() {
+        this.getStr = function () { /*warning:function_name_missing*/
+            return this.str;
+        };
+        this.setStr = function setStr(s) {
+            this.str = s;
+        };
     }
     Class.prototype.get = function () { /*warning:function_name_missing*/
         return this.value;

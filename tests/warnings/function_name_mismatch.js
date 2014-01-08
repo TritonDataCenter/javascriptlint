@@ -34,6 +34,12 @@ function function_name_mismatch() {
     }
 
     function Class() {
+        this.getStr = function getSt() { /*warning:function_name_mismatch*/
+            return this.str;
+        };
+        this.setStr = function setStr(s) {
+            this.str = s;
+        };
     }
     Class.prototype.get = function gt() { /*warning:function_name_mismatch*/
         return this.value;

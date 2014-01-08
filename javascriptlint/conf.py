@@ -94,6 +94,12 @@ DEFAULT_CONF = """\
 #+default-type text/javascript;version=1.5
 #+default-type text/javascript;e4x=1
 
+### 
+# Some browsers pollute the namespace when using the "function_name_missing"
+# or "function_name_mismatch" warning. Enable this option to require a
+# double-underscore prefix.
+#+decorate_function_name_warning
+
 ### Files
 # Specify which files to lint
 # Use "+recurse" to enable recursion (disabled by default).
@@ -186,7 +192,8 @@ class Conf:
             # SpiderMonkey warnings
             'no_return_value': BooleanSetting(True),
             'equal_as_assign': BooleanSetting(True),
-            'anon_no_return_value': BooleanSetting(True)
+            'anon_no_return_value': BooleanSetting(True),
+            'decorate_function_name_warning': BooleanSetting(False),
         }
         for name in warnings.warnings:
             self._settings[name] = BooleanSetting(True)

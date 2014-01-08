@@ -482,7 +482,7 @@ def _lint_script_part(script_offset, jsversion, script, script_cache, conf,
 
     # Find all visitors and convert them into "onpush" callbacks that call "report"
     visitors = {
-        'push': warnings.make_visitors()
+        'push': warnings.make_visitors(conf)
     }
     for event in visitors:
         for kind, callbacks in visitors[event].items():

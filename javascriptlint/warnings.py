@@ -139,6 +139,20 @@ def lookfor(*args):
             _visitors.append((arg, fn))
     return decorate
 
+_visitor_classes = []
+def lookfor_class(*args):
+    def decorate(cls):
+        # Convert the class name to camel case
+        camelcase = re.sub('([A-Z])', r'_\1', cls.__name__).lower().lstrip('_')
+
+        cls.warning = camelcase.rstrip('_')
+        assert cls.warning in warnings, \
+                'Missing warning description: %s' % cls.warning
+
+        for arg in args:
+            _visitor_classes.append((arg, cls))
+    return decorate
+
 class LintWarning(Exception):
     def __init__(self, node, **errargs):
         self.node = node
@@ -638,7 +652,7 @@ def misplaced_function(node):
         return # Allow as constructors
     raise LintWarning(node)
 
-def _get_expected_function_name(node):
+def _get_function_property_name(node):
     # Ignore function statements.
     if node.opcode in (None, op.CLOSURE):
         return
@@ -671,26 +685,41 @@ def _get_expected_function_name(node):
     if parent.kind == tok.COLON and parent.parent.kind == tok.RC:
         return parent.kids[0].atom
 
-@lookfor(tok.FUNCTION)
-def function_name_missing(node):
-    if node.fn_name:
-        return
+def _get_expected_function_name(node, decorate):
+    name = _get_function_property_name(node)
+    if name and decorate:
+        return '__%s' % name
+    return name
 
-    expected_name = _get_expected_function_name(node)
-    if not expected_name is None:
-        raise LintWarning(node, name=expected_name)
+@lookfor_class(tok.FUNCTION)
+class FunctionNameMissing(object):
+    def __init__(self, conf):
+        self._decorate = conf['decorate_function_name_warning']
 
-@lookfor(tok.FUNCTION)
-def function_name_mismatch(node):
-    if not node.fn_name:
-        return
+    def __call__(self, node):
+        if node.fn_name:
+            return
 
-    expected_name = _get_expected_function_name(node)
-    if expected_name is None:
-        return
+        expected_name = _get_expected_function_name(node, self._decorate)
+        if not expected_name is None:
+            raise LintWarning(node, name=expected_name)
 
-    if expected_name != node.fn_name:
-        raise LintWarning(node, fn_name=node.fn_name, prop_name=expected_name)
+@lookfor_class(tok.FUNCTION)
+class FunctionNameMismatch(object):
+    def __init__(self, conf):
+        self._decorate = conf['decorate_function_name_warning']
+
+    def __call__(self, node):
+        if not node.fn_name:
+            return
+
+        expected_name = _get_expected_function_name(node, self._decorate)
+        if expected_name is None:
+            return
+
+        if expected_name != node.fn_name:
+            raise LintWarning(node, fn_name=node.fn_name,
+                              prop_name=expected_name)
 
 @lookfor()
 def mismatch_ctrl_comments(node):
@@ -755,9 +784,13 @@ def partial_option_explicit(node):
 def dup_option_explicit(node):
     pass
 
-def make_visitors():
+def make_visitors(conf):
+    all_visitors = list(_visitors)
+    for kind, klass in _visitor_classes:
+        all_visitors.append((kind, klass(conf=conf)))
+
     visitors = {}
-    for kind, func in _visitors:
+    for kind, func in all_visitors:
         try:
             visitors[kind].append(func)
         except KeyError:
