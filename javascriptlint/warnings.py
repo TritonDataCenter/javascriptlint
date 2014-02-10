@@ -547,12 +547,17 @@ def octal_number(node):
 @lookfor(tok.RC)
 def trailing_comma(node):
     if node.end_comma:
-        raise LintWarning(node)
+        # Warn on the last value in the dictionary.
+        last_item = node.kids[-1]
+        assert last_item.kind == tok.COLON
+        key, value = last_item.kids
+        raise LintWarning(value)
 
 @lookfor(tok.RB)
 def trailing_comma_in_array(node):
     if node.end_comma:
-        raise LintWarning(node)
+        # Warn on the last value in the array.
+        raise LintWarning(node.kids[-1])
 
 @lookfor(tok.STRING)
 def useless_quotes(node):
