@@ -124,9 +124,10 @@ def format_error(errname, **errargs):
        errdesc = warnings[errname]
 
     try:
-        errdesc = re.sub(r"{(\w+)}", lambda match: errargs[match.group(1)], errdesc)
+        keyword = re.compile(r"{(\w+)}")
+        errdesc = keyword.sub(lambda match: errargs[match.group(1)], errdesc)
     except (TypeError, KeyError):
-        raise KeyError('Invalid keyword in error: ' + errdesc)
+        raise KeyError('Invalid keyword in error %s: %s' % (errname, errdesc))
     return errdesc
 
 _visitors = []

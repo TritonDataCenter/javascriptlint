@@ -170,7 +170,7 @@ class Tokenizer:
         encountered = self.advance()
         if encountered.tok != tok:
             raise JSSyntaxError(encountered.start_offset, 'expected_tok',
-                                { 'token': tok })
+                                { 'token': tok.getliteral() })
         return encountered
 
     def expect_identifiername(self):
