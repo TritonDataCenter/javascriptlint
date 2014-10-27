@@ -244,7 +244,10 @@ class Conf:
         parm = line[len(name):].lstrip()
 
         # Load the setting
-        setting = self._settings[name]
+        try:
+            setting = self._settings[name]
+        except KeyError:
+            raise ConfError('Unrecognized setting: %s' % name)
         args = {
             'enabled': enabled
         }

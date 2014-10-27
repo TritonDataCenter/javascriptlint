@@ -2,6 +2,7 @@
 # vim: ts=4 sw=4 expandtab
 import codecs
 import fnmatch
+import functools
 import glob
 import os
 import sys
@@ -27,12 +28,14 @@ def _dump(paths, encoding):
         script = fs.readfile(path, encoding)
         jsparse.dump_tree(script)
 
+def _lint_warning(conf_, path, line, col, errname, errdesc):
+    _lint_results['warnings'] = _lint_results['warnings'] + 1
+    print util.format_error(conf_['output-format'], path, line, col,
+                                  errname, errdesc)
+
 def _lint(paths, conf_, printpaths, encoding):
-    def lint_error(path, line, col, errname, errdesc):
-        _lint_results['warnings'] = _lint_results['warnings'] + 1
-        print util.format_error(conf_['output-format'], path, line, col,
-                                      errname, errdesc)
-    lint.lint_files(paths, lint_error, encoding, conf=conf_, printpaths=printpaths)
+    lint.lint_files(paths, functools.partial(_lint_warning, conf_), encoding,
+                    conf=conf_, printpaths=printpaths)
 
 def _resolve_paths(path, recurse):
     # Build a list of directories
@@ -116,7 +119,11 @@ def _main():
 
     conf_ = conf.Conf()
     if options.conf:
-        conf_.loadfile(options.conf)
+        try:
+            conf_.loadfile(options.conf)
+        except conf.ConfError, error:
+            _lint_warning(conf_, error.path, error.lineno, 0, 'conf_error',
+                          unicode(error))
 
     profile_func = _profile_disabled
     if options.profile:
