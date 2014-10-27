@@ -176,6 +176,16 @@ class JSVersionSetting(Setting):
         if not self.value:
             raise ConfError('Invalid JavaScript version: %s' % parm)
 
+class ConfSetting(Setting):
+    wants_parm = True
+    wants_dir = True
+    def __init__(self, conf):
+        self._conf = conf
+    def load(self, enabled, parm, dir):
+        if dir:
+            parm = os.path.join(dir, parm)
+        self._conf.loadfile(parm)
+
 class Conf:
     def __init__(self):
         recurse = BooleanSetting(False)
@@ -190,6 +200,7 @@ class Conf:
             'context': BooleanSetting(True),
             'process': ProcessSetting(recurse),
             'default-version': JSVersionSetting(),
+            'conf': ConfSetting(self),
             # SpiderMonkey warnings
             'no_return_value': BooleanSetting(True),
             'equal_as_assign': BooleanSetting(True),
