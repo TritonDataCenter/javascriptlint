@@ -11,6 +11,7 @@ _DISABLED_WARNINGS = (
    'block_without_braces',
    'function_name_missing',
    'function_name_mismatch',
+   'trailing_whitespace',
 )
 
 def _getwarningsconf():

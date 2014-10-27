@@ -87,6 +87,20 @@ def findcomments(script, root_node, start_offset=0):
     possible_comments = findpossiblecomments(script, start_offset)
     return filtercomments(possible_comments, root_node)
 
+def find_trailing_whitespace(script, script_offset):
+    nodes = []
+
+    trailing_whitespace = re.compile(r'\S(?P<whitespace>[^\S\r\n]+)([\r\n]|$)')
+
+    for match in trailing_whitespace.finditer(script):
+        start = match.start('whitespace')
+        end = match.end('whitespace')
+        nodes.append(ParseNode(kind.WHITESPACE, None,
+                               script_offset + start,
+                               script_offset + end-1,
+                               script[start:end], []))
+    return nodes
+
 def is_compilable_unit(script, jsversion):
     jsversion = jsversion or JSVersion.default()
     assert isvalidversion(jsversion)
@@ -262,6 +276,21 @@ class TestLineOffset(unittest.TestCase):
             testcomment('%s' % comment, 7, 7)
             testcomment(' %s' % comment, 7, 8)
             testcomment('\n\n %s' % comment, 7, 10)
+    def testTrailingWhitespace(self):
+        def testwhitespace(text, expected_whitespace):
+            nodes = find_trailing_whitespace(text, 0)
+            if expected_whitespace:
+                node, = nodes
+                self.assertEquals(node.atom, expected_whitespace)
+            else:
+                self.assertEquals(nodes, [])
+
+        testwhitespace('  ', '')
+        testwhitespace('  \n', '')
+        testwhitespace('a  \n', '  ')
+        testwhitespace('a\n   ', '')
+        testwhitespace('a\n {}   ', '   ')
+        testwhitespace('a\n {}   \n', '   ')
 
 if __name__ == '__main__':
     unittest.main()

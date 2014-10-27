@@ -64,6 +64,7 @@ _KINDS = [
     'RB',
     'STRING',
     'YIELD', # TODO
+    'WHITESPACE',
 ]
 class _Kind(object):
     def __init__(self, name):

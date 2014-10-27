@@ -105,6 +105,7 @@ warnings = {
     'misplaced_function': 'unconventional use of function expression',
     'function_name_missing': 'anonymous function should be named to match property name {name}',
     'function_name_mismatch': 'function name {fn_name} does not match property name {prop_name}',
+    'trailing_whitespace': 'trailing whitespace',
 }
 
 errors = {

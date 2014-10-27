@@ -511,6 +511,9 @@ def _lint_script_part(script_offset, jsversion, script, script_cache, conf,
         unused_scope = script_cache.scope.find_scope(node)
         unused_scope.set_unused(name, node)
 
+    for node in jsparse.find_trailing_whitespace(script, script_offset):
+        report(node, 'trailing_whitespace')
+
 def _lint_script_parts(script_parts, script_cache, lint_error, conf, import_callback):
     def report_lint(node, errname, offset=0, **errargs):
         errdesc = warnings.format_error(errname, **errargs)
