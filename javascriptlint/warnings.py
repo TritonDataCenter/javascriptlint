@@ -265,6 +265,14 @@ def _get_exit_points(node):
 
     return exit_points
 
+def _loop_has_unreachable_condition(node):
+    for exit_point in _get_exit_points(node):
+        if exit_point is None:
+            return False
+        if exit_point.kind == tok.CONTINUE:
+            return False
+    return True
+
 @lookfor((tok.EQOP, op.EQ))
 def comparison_type_conv(node):
     for kid in node.kids:
@@ -493,14 +501,14 @@ def unreachable_code_(node):
     if preamble.kind == tok.RESERVED:
         pre, condition, post = preamble.kids
         if post:
-            if not None in _get_exit_points(code):
+            if _loop_has_unreachable_condition(code):
                 raise LintWarning(post)
 
 @lookfor(tok.DO)
 def unreachable_code__(node):
     # Warn if the do..while loop always exits.
     code, condition = node.kids
-    if not None in _get_exit_points(code):
+    if _loop_has_unreachable_condition(code):
         raise LintWarning(condition)
 
 #TODO: @lookfor(tok.IF)
