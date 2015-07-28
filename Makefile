@@ -18,7 +18,7 @@ CPPFLAGS += -DNDEBUG -D_REENTRANT					\
 
 
 PY_PYTHON=$(shell python -c "import sys; print(sys.executable)")
-PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; print(sys.prefix)")
+PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; print(sys.real_prefix)" || $(PY_PYTHON) -c "import sys; print(sys.prefix)")
 PY_VERSION=$(shell $(PY_PYTHON) -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
 ifeq ($(BUILDOS),Darwin)
 	PY_ARCH=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "x86_64" or "i386")')
