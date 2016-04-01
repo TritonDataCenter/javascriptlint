@@ -590,6 +590,8 @@ def want_assign_or_call(node):
     # Ignore function calls.
     if child.kind == tok.LP and child.opcode == op.CALL:
         return
+    if child.kind == tok.STRING and child.atom == 'use strict':
+        return
     # Allow new function() { } as statements.
     if child.kind == tok.NEW:
         # The first kid is the constructor, followed by its arguments.
