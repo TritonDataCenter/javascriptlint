@@ -32,9 +32,11 @@ function control_comments() {
 
     // The following are illegal. Make sure jsl doesn't choke.
     /*jsl:*/ /*warning:jsl_cc_not_understood*/
-    if (a)
-    {
+    if (a) {
        /*jsl:pass */
+    }
+    else if (b) {
+       /* jsl:pass */ //allow spaces on both sides
     }
     /*jsl:ignoreal*/ /*warning:jsl_cc_not_understood*/
     /*jsl:declarebogus*/ /*warning:jsl_cc_not_understood*/
