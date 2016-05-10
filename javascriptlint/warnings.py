@@ -665,6 +665,8 @@ def misplaced_function(node):
         return # Allow for return values
     if parent.kind == tok.NEW:
         return # Allow as constructors
+    if parent.kind == tok.RB:
+        return # Allow in arrays
     raise LintWarning(node)
 
 def _get_function_property_name(node):
