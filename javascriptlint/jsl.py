@@ -14,6 +14,7 @@ import htmlparse
 import jsparse
 import lint
 import util
+import version
 
 _lint_results = {
     'warnings': 0,
@@ -48,8 +49,7 @@ def _resolve_paths(path, recurse):
     return paths or [path]
 
 def printlogo():
-    # TODO: Print version number.
-    print "JavaScript Lint"
+    print "JavaScript Lint %s" % version.version
     print "Developed by Matthias Miller (http://www.JavaScriptLint.com)"
 
 def _profile_enabled(func, *args, **kwargs):

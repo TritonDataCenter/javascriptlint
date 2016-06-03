@@ -4,6 +4,7 @@ import unittest
 
 import fs
 import util
+import version
 import warnings
 
 _DISABLED_WARNINGS = (
@@ -100,7 +101,7 @@ DEFAULT_CONF = """\
 # or "+process Folder\Path\*.htm".
 #
 """ % {
-    'version': '', # TODO
+    'version': version.version,
     'warnings': _getwarningsconf(),
 }
 
