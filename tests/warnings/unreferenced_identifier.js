@@ -32,6 +32,10 @@ function unreferenced_identifier() {
     var unref_dup_var; /*warning:unreferenced_variable*/
     var unref_dup_var; /*warning:redeclared_var*/
 
+    /* Same thing for constants */
+    const unref_dup_const; /*warning:unreferenced_variable*/
+    const unref_dup_const; /*warning:redeclared_var*/
+
     /* Test a try/catch. The error doesn't need to be referenced. */
     var can;
     try {

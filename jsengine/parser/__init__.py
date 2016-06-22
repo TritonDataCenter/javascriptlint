@@ -522,6 +522,13 @@ def _var_statement(t):
     return _auto_semicolon(t, kind.VAR, op.DEFVAR,
                            start_offset, nodes[-1].end_offset, None, nodes)
 
+def _const_statement(t):
+    # CONSTANT STATEMENT
+    start_offset = t.expect(tok.CONST).start_offset
+    nodes = _variable_declaration(t, True)
+    return _auto_semicolon(t, kind.VAR, op.DEFVAR,
+                           start_offset, nodes[-1].end_offset, None, nodes)
+
 def _if_statement(t):
     # IF STATEMENT
     start_offset = t.expect(tok.IF).start_offset
@@ -756,6 +763,8 @@ def _statement(t):
         return _empty_statement(t)
     elif x.tok == tok.VAR:
         return _var_statement(t)
+    elif x.tok == tok.CONST:
+        return _const_statement(t)
     elif x.tok == tok.IF:
         return _if_statement(t)
     elif x.tok == tok.DO:
