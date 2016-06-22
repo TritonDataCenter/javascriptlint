@@ -9,7 +9,8 @@ function redeclared_var() {
     var myFunction; /*warning:redeclared_var*/
 
     // myFunction isn't a redeclaration, since function names in function
-    // expressions don't matter.
-    var tmp = function myFunction(){};
+    // expressions don't affect the outer scope -- they do however introduce
+    // it into the declared function's scope
+    var tmp = function myFunction(){}; /*warning:identifier_hides_another*/
     /*jsl:unused tmp*/
 }

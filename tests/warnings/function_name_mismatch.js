@@ -1,4 +1,5 @@
 /*conf:+function_name_mismatch*/
+/*conf:-identifier_hides_another*/
 function function_name_mismatch() {
     var f = function bogus() { /*warning:function_name_mismatch*/
     };

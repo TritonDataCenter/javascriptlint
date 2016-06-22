@@ -81,7 +81,7 @@ function unreferenced_identifier() {
     /* Test named functions as references.
      * (The name is ignored since it's a function expression.)
      */
-    var fn = function ref_func() { return 42; };
+    var fn = function ref_func() { return 42; }; /*warning:unreferenced_function*/
     fn();
 
     /* Test nested scopes. */

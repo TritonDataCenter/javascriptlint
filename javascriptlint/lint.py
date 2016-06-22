@@ -616,6 +616,8 @@ def _get_scope_checks(scope, report):
             if node.opcode in (None, op.CLOSURE) and node.fn_name:
                 _warn_or_declare(scopes[-1], node.fn_name, 'function', node, report)
             self._push_scope(node)
+            if node.opcode == op.NAMEDFUNOBJ and node.fn_name:
+                scopes[-1].add_declaration(node.fn_name, node, 'function')
             for var_name in node.fn_args:
                 if scopes[-1].get_identifier(var_name.atom):
                     report(var_name, 'duplicate_formal', name=var_name.atom)
