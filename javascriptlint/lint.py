@@ -50,7 +50,8 @@ def _parse_control_comment(comment):
     """ Returns None or (keyword, parms) """
     comment_atom = comment.atom.strip()
     if comment_atom.lower().startswith('jsl:'):
-        control_comment = comment_atom[4:]
+        # Left strip to allow space before the keyword
+        control_comment = comment_atom[4:].lstrip()
     elif comment_atom.startswith('@') and comment_atom.endswith('@'):
         control_comment = comment_atom[1:-1]
     else:
