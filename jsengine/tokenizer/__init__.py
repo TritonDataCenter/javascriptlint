@@ -155,7 +155,7 @@ class Tokenizer:
     def next_withregexp(self):
         assert not self._error
         self._readahead()
-        if self._peeked[-1].tok == tok.DIV:
+        if self._peeked[-1].tok in (tok.DIV, tok.ASSIGN_DIV):
             token = self._parse_rest_of_regexp()
             token.set_offset(self._peeked[-1].start_offset, self._stream.get_offset()-1)
             self._peeked = []
