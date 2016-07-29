@@ -2,6 +2,7 @@
 # vim: ts=4 sw=4 expandtab
 import codecs
 import fnmatch
+import functools
 import glob
 import os
 import sys
@@ -9,27 +10,32 @@ import unittest
 from optparse import OptionParser
 
 import conf
+import fs
 import htmlparse
 import jsparse
+import jsengine.parser
 import lint
 import util
+import version
 
 _lint_results = {
     'warnings': 0,
     'errors': 0
 }
 
-def _dump(paths):
+def _dump(paths, encoding):
     for path in paths:
-        script = util.readfile(path)
+        script = fs.readfile(path, encoding)
         jsparse.dump_tree(script)
 
-def _lint(paths, conf_, printpaths):
-    def lint_error(path, line, col, errname, errdesc):
-        _lint_results['warnings'] = _lint_results['warnings'] + 1
-        print util.format_error(conf_['output-format'], path, line, col,
-                                      errname, errdesc)
-    lint.lint_files(paths, lint_error, conf=conf_, printpaths=printpaths)
+def _lint_warning(conf_, path, line, col, errname, errdesc):
+    _lint_results['warnings'] = _lint_results['warnings'] + 1
+    print util.format_error(conf_['output-format'], path, line, col,
+                                  errname, errdesc)
+
+def _lint(paths, conf_, printpaths, encoding):
+    lint.lint_files(paths, functools.partial(_lint_warning, conf_), encoding,
+                    conf=conf_, printpaths=printpaths)
 
 def _resolve_paths(path, recurse):
     # Build a list of directories
@@ -47,8 +53,7 @@ def _resolve_paths(path, recurse):
     return paths or [path]
 
 def printlogo():
-    # TODO: Print version number.
-    print "JavaScript Lint"
+    print "JavaScript Lint %s" % version.version
     print "Developed by Matthias Miller (http://www.JavaScriptLint.com)"
 
 def _profile_enabled(func, *args, **kwargs):
@@ -65,7 +70,7 @@ def _profile_enabled(func, *args, **kwargs):
 def _profile_disabled(func, *args, **kwargs):
     func(*args, **kwargs)
 
-def main():
+def _main():
     parser = OptionParser(usage="%prog [options] [files]")
     add = parser.add_option
     add("--conf", dest="conf", metavar="CONF",
@@ -96,6 +101,8 @@ def main():
         help="suppress lint summary")
     add("--help:conf", dest="showdefaultconf", action="store_true", default=False,
         help="display the default configuration file")
+    add("--encoding", dest="encoding", metavar="ENCODING", default="utf-8",
+        help="encoding for input file(s)")
     parser.set_defaults(verbosity=1)
     options, args = parser.parse_args()
 
@@ -112,7 +119,11 @@ def main():
 
     conf_ = conf.Conf()
     if options.conf:
-        conf_.loadfile(options.conf)
+        try:
+            conf_.loadfile(options.conf)
+        except conf.ConfError, error:
+            _lint_warning(conf_, error.path, error.lineno, 0, 'conf_error',
+                          unicode(error))
 
     profile_func = _profile_disabled
     if options.profile:
@@ -120,7 +131,7 @@ def main():
 
     if options.unittest:
         suite = unittest.TestSuite();
-        for module in [conf, htmlparse, jsparse, lint, util]:
+        for module in [conf, htmlparse, jsengine.parser, jsparse, lint, util]:
             suite.addTest(unittest.findTestCases(module))
 
         runner = unittest.TextTestRunner(verbosity=options.verbosity)
@@ -137,9 +148,9 @@ def main():
         else:
             paths.append(arg)
     if options.dump:
-        profile_func(_dump, paths)
+        profile_func(_dump, paths, options.encoding)
     else:
-        profile_func(_lint, paths, conf_, options.printlisting)
+        profile_func(_lint, paths, conf_, options.printlisting, options.encoding)
 
     if options.printsummary:
         print '\n%i error(s), %i warnings(s)' % (_lint_results['errors'],
@@ -150,6 +161,12 @@ def main():
     if _lint_results['warnings']:
         sys.exit(1)
     sys.exit(0)
+
+def main():
+    try:
+        _main()
+    except KeyboardInterrupt:
+        raise SystemExit(130)
 
 if __name__ == '__main__':
     main()

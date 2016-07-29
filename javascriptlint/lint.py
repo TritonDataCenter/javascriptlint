@@ -12,7 +12,8 @@ import warnings
 import unittest
 import util
 
-from spidermonkey import tok, op
+from jsengine.parser import kind as tok
+from jsengine.parser import op
 
 _newline_kinds = (
     'eof', 'comma', 'dot', 'semi', 'colon', 'lc', 'rc', 'lp', 'rb', 'assign',
@@ -47,36 +48,34 @@ def _find_functions(node):
 
 def _parse_control_comment(comment):
     """ Returns None or (keyword, parms) """
-    atom = comment.atom.strip()
-    atom_lower = atom.lower()
-    if atom_lower.startswith('jsl:'):
-        control_comment = atom[4:]
-    elif atom.startswith('@') and atom.endswith('@'):
-        control_comment = atom[1:-1]
+    comment_atom = comment.atom.strip()
+    if comment_atom.lower().startswith('jsl:'):
+        # Left strip to allow space before the keyword
+        control_comment = comment_atom[4:].lstrip()
+    elif comment_atom.startswith('@') and comment_atom.endswith('@'):
+        control_comment = comment_atom[1:-1]
     else:
         return None
 
-    control_comments = {
-        'ignoreall': (False),
-        'ignore': (False),
-        'end': (False),
-        'option explicit': (False),
-        'import': (True),
-        'fallthru': (False),
-        'pass': (False),
-        'declare': (True),
-        'unused': (True),
-        'content-type': (True),
-    }
-    if control_comment.lower() in control_comments:
-        keyword = control_comment.lower()
-    else:
-        keyword = control_comment.lower().split()[0]
-        if not keyword in control_comments:
-            return None
-
-    parms = control_comment[len(keyword):].strip()
-    return (comment, keyword, parms)
+    keywords = (
+        'ignoreall',
+        'ignore',
+        'end',
+        'option explicit',
+        'import',
+        'fallthru',
+        'pass',
+        'declare',
+        'unused',
+        'content-type',
+    )
+    for keyword in keywords:
+        # The keyword must either match or be separated by a space.
+        if control_comment.lower() == keyword or \
+            (control_comment.lower().startswith(keyword) and \
+             control_comment[len(keyword)].isspace()):
+            parms = control_comment[len(keyword):].strip()
+            return (comment, keyword, parms.strip())
 
 class Scope:
     """ Outer-level scopes will never be associated with a node.
@@ -98,6 +97,7 @@ class Scope:
     def add_declaration(self, name, node, type_):
         assert type_ in ('arg', 'function', 'var'), \
             'Unrecognized identifier type: %s' % type_
+        assert isinstance(name, basestring)
         self._identifiers[name] = {
             'node': node,
             'type': type_
@@ -141,7 +141,7 @@ class Scope:
         # sorted by node position.
         unreferenced = [(key[0], key[1], node) for key, node
                         in unreferenced.items()]
-        unreferenced.sort(key=lambda x: x[2].start_pos())
+        unreferenced.sort(key=lambda x: x[2].start_offset)
 
         return {
             'unreferenced': unreferenced,
@@ -215,8 +215,8 @@ class Scope:
 
         # Conditionally add it to an inner scope.
         assert self._node
-        if (node.start_pos() >= self._node.start_pos() and \
-            node.end_pos() <= self._node.end_pos()):
+        if (node.start_offset >= self._node.start_offset and \
+            node.end_offset <= self._node.end_offset):
             return self
 
 class _Script:
@@ -246,7 +246,6 @@ class _Script:
 
 def _findhtmlscripts(contents, default_version):
     starttag = None
-    nodepos = jsparse.NodePositions(contents)
     for tag in htmlparse.findscripttags(contents):
         if tag['type'] == 'start':
             # Ignore nested start tags.
@@ -266,13 +265,9 @@ def _findhtmlscripts(contents, default_version):
 
             # htmlparse returns 1-based line numbers. Calculate the
             # position of the script's contents.
-            tagpos = jsparse.NodePos(starttag['lineno']-1, starttag['offset'])
-            tagoffset = nodepos.to_offset(tagpos)
-            startoffset = tagoffset + starttag['len']
-            startpos = nodepos.from_offset(startoffset)
-            endpos = jsparse.NodePos(tag['lineno']-1, tag['offset'])
-            endoffset = nodepos.to_offset(endpos)
-            script = contents[startoffset:endoffset]
+            start_offset = starttag['offset'] + starttag['len']
+            end_offset = tag['offset']
+            script = contents[start_offset:end_offset]
 
             if not jsparse.isvalidversion(starttag['jsversion']) or \
                jsparse.is_compilable_unit(script, starttag['jsversion']):
@@ -280,35 +275,42 @@ def _findhtmlscripts(contents, default_version):
                     yield {
                         'type': 'inline',
                         'jsversion': starttag['jsversion'],
-                        'pos': startpos,
+                        'offset': start_offset,
                         'contents': script,
                     }
                 starttag = None
         else:
             assert False, 'Invalid internal tag type %s' % tag['type']
 
-def lint_files(paths, lint_error, conf=conf.Conf(), printpaths=True):
-    def lint_file(path, kind, jsversion):
+def lint_files(paths, lint_error, encoding, conf=conf.Conf(), printpaths=True):
+    def lint_file(path, kind, jsversion, encoding):
         def import_script(import_path, jsversion):
             # The user can specify paths using backslashes (such as when
             # linting Windows scripts on a posix environment.
             import_path = import_path.replace('\\', os.sep)
             import_path = os.path.join(os.path.dirname(path), import_path)
-            return lint_file(import_path, 'js', jsversion)
-        def _lint_error(*args):
-            return lint_error(normpath, *args)
+            return lint_file(import_path, 'js', jsversion, encoding)
+        def _lint_error(offset, errname, errdesc):
+            pos = node_positions.from_offset(offset)
+            return lint_error(normpath, pos.line, pos.col, errname, errdesc)
 
         normpath = fs.normpath(path)
         if normpath in lint_cache:
             return lint_cache[normpath]
         if printpaths:
             print normpath
-        contents = fs.readfile(path)
+
         lint_cache[normpath] = _Script()
+        try:
+            contents = fs.readfile(path, encoding)
+        except IOError, error:
+            lint_error(normpath, 0, 0, 'io_error', unicode(error))
+            return lint_cache[normpath]
+        node_positions = jsparse.NodePositions(contents)
 
         script_parts = []
         if kind == 'js':
-            script_parts.append((None, jsversion or conf['default-version'], contents))
+            script_parts.append((0, jsversion or conf['default-version'], contents))
         elif kind == 'html':
             assert jsversion is None
             for script in _findhtmlscripts(contents, conf['default-version']):
@@ -320,7 +322,7 @@ def lint_files(paths, lint_error, conf=conf.Conf(), printpaths=True):
                     other = import_script(script['src'], script['jsversion'])
                     lint_cache[normpath].importscript(other)
                 elif script['type'] == 'inline':
-                    script_parts.append((script['pos'], script['jsversion'],
+                    script_parts.append((script['offset'], script['jsversion'],
                                          script['contents']))
                 else:
                     assert False, 'Invalid internal script type %s' % \
@@ -335,22 +337,22 @@ def lint_files(paths, lint_error, conf=conf.Conf(), printpaths=True):
     for path in paths:
         ext = os.path.splitext(path)[1]
         if ext.lower() in ['.htm', '.html']:
-            lint_file(path, 'html', None)
+            lint_file(path, 'html', None, encoding)
         else:
-            lint_file(path, 'js', None)
+            lint_file(path, 'js', None, encoding)
 
-def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
+def _lint_script_part(script_offset, jsversion, script, script_cache, conf,
                       ignores, report_native, report_lint, import_callback):
-    def parse_error(row, col, msg):
+    def parse_error(offset, msg, msg_args):
         if not msg in ('anon_no_return_value', 'no_return_value',
                        'redeclared_var', 'var_hides_arg'):
-            parse_errors.append((jsparse.NodePos(row, col), msg))
+            parse_errors.append((offset, msg, msg_args))
 
-    def report(node, errname, pos=None, **errargs):
+    def report(node, errname, offset=0, **errargs):
         if errname == 'empty_statement' and node.kind == tok.LC:
             for pass_ in passes:
-                if pass_.start_pos() > node.start_pos() and \
-                   pass_.end_pos() < node.end_pos():
+                if pass_.start_offset > node.start_offset and \
+                   pass_.end_offset < node.end_offset:
                     passes.remove(pass_)
                     return
 
@@ -359,12 +361,12 @@ def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
             # the next case/default.
             assert node.kind in (tok.CASE, tok.DEFAULT)
             prevnode = node.parent.kids[node.node_index-1]
-            expectedfallthru = prevnode.end_pos(), node.start_pos()
+            expectedfallthru = prevnode.end_offset, node.start_offset
         elif errname == 'missing_break_for_last_case':
             # Find the end of the current case/default and the end of the
             # switch.
             assert node.parent.kind == tok.LC
-            expectedfallthru = node.end_pos(), node.parent.end_pos()
+            expectedfallthru = node.end_offset, node.parent.end_offset
         else:
             expectedfallthru = None
 
@@ -373,11 +375,11 @@ def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
             for fallthru in fallthrus:
                 # Look for a fallthru between the end of the current case or
                 # default statement and the beginning of the next token.
-                if fallthru.start_pos() > start and fallthru.end_pos() < end:
+                if fallthru.start_offset > start and fallthru.end_offset < end:
                     fallthrus.remove(fallthru)
                     return
 
-        report_lint(node, errname, pos, **errargs)
+        report_lint(node, errname, offset, **errargs)
 
     parse_errors = []
     declares = []
@@ -386,8 +388,7 @@ def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
     fallthrus = []
     passes = []
 
-    node_positions = jsparse.NodePositions(script, scriptpos)
-    possible_comments = jsparse.findpossiblecomments(script, node_positions)
+    possible_comments = jsparse.findpossiblecomments(script, script_offset)
 
     # Check control comments for the correct version. It may be this comment
     # isn't a valid comment (for example, it might be inside a string literal)
@@ -406,18 +407,18 @@ def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
                     report(node, 'unsupported_version', version=parms)
 
     if not jsparse.isvalidversion(jsversion):
-        report_lint(jsversionnode, 'unsupported_version', scriptpos,
+        report_lint(jsversionnode, 'unsupported_version', script_offset,
                     version=jsversion.version)
         return
 
-    root = jsparse.parse(script, jsversion, parse_error, scriptpos)
+    root = jsparse.parse(script, jsversion, parse_error, script_offset)
     if not root:
         # Report errors and quit.
-        for pos, msg in parse_errors:
-            report_native(pos, msg)
+        for offset, msg, msg_args in parse_errors:
+            report_native(offset, msg, msg_args)
         return
 
-    comments = jsparse.filtercomments(possible_comments, node_positions, root)
+    comments = jsparse.filtercomments(possible_comments, root)
 
     if jsversionnode is not None and jsversionnode not in comments:
         # TODO
@@ -445,7 +446,7 @@ def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
                     start_ignore = node
             elif keyword == 'end':
                 if start_ignore:
-                    ignores.append((start_ignore.start_pos(), node.end_pos()))
+                    ignores.append((start_ignore.start_offset, node.end_offset))
                     start_ignore = None
                 else:
                     report(node, 'mismatch_ctrl_comments')
@@ -459,7 +460,7 @@ def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
             elif keyword == 'pass':
                 passes.append(node)
         else:
-            if comment.opcode == 'c_comment':
+            if comment.opcode == op.C_COMMENT:
                 # Look for nested C-style comments.
                 nested_comment = comment.atom.find('/*')
                 if nested_comment < 0 and comment.atom.endswith('/'):
@@ -467,8 +468,8 @@ def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
                 # Report at the actual error of the location. Add two
                 # characters for the opening two characters.
                 if nested_comment >= 0:
-                    pos = node_positions.from_offset(node_positions.to_offset(comment.start_pos()) + 2 + nested_comment)
-                    report(comment, 'nested_comment', pos=pos)
+                    offset = comment.start_offset + 2 + nested_comment
+                    report(comment, 'nested_comment', offset=offset)
             if comment.atom.lower().startswith('jsl:'):
                 report(comment, 'jsl_cc_not_understood')
             elif comment.atom.startswith('@'):
@@ -477,12 +478,12 @@ def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
         report(start_ignore, 'mismatch_ctrl_comments')
 
     # Wait to report parse errors until loading jsl:ignore directives.
-    for pos, msg in parse_errors:
-        report_native(pos, msg)
+    for offset, msg in parse_errors:
+        report_native(offset, msg)
 
     # Find all visitors and convert them into "onpush" callbacks that call "report"
     visitors = {
-        'push': warnings.make_visitors()
+        'push': warnings.make_visitors(conf)
     }
     for event in visitors:
         for kind, callbacks in visitors[event].items():
@@ -511,16 +512,19 @@ def _lint_script_part(scriptpos, jsversion, script, script_cache, conf,
         unused_scope = script_cache.scope.find_scope(node)
         unused_scope.set_unused(name, node)
 
+    for node in jsparse.find_trailing_whitespace(script, script_offset):
+        report(node, 'trailing_whitespace')
+
 def _lint_script_parts(script_parts, script_cache, lint_error, conf, import_callback):
-    def report_lint(node, errname, pos=None, **errargs):
+    def report_lint(node, errname, offset=0, **errargs):
         errdesc = warnings.format_error(errname, **errargs)
-        _report(pos or node.start_pos(), errname, errdesc, True)
+        _report(offset or node.start_offset, errname, errdesc, True)
 
-    def report_native(pos, errname):
-        # TODO: Format the error.
-        _report(pos, errname, errname, False)
+    def report_native(offset, errname, errargs):
+        errdesc = warnings.format_error(errname, **errargs)
+        _report(offset, errname, errdesc, False)
 
-    def _report(pos, errname, errdesc, require_key):
+    def _report(offset, errname, errdesc, require_key):
         try:
             if not conf[errname]:
                 return
@@ -529,14 +533,14 @@ def _lint_script_parts(script_parts, script_cache, lint_error, conf, import_call
                 raise
 
         for start, end in ignores:
-            if pos >= start and pos <= end:
+            if offset >= start and offset <= end:
                 return
 
-        return lint_error(pos.line, pos.col, errname, errdesc)
+        return lint_error(offset, errname, errdesc)
 
-    for scriptpos, jsversion, script in script_parts:
+    for script_offset, jsversion, script in script_parts:
         ignores = []
-        _lint_script_part(scriptpos, jsversion, script, script_cache, conf, ignores,
+        _lint_script_part(script_offset, jsversion, script, script_cache, conf, ignores,
                           report_native, report_lint, import_callback)
 
     scope = script_cache.scope
@@ -572,10 +576,10 @@ def _getreporter(visitor, report):
             # TODO: This is ugly hardcoding to improve the error positioning of
             # "missing_semicolon" errors.
             if visitor.warning in ('missing_semicolon', 'missing_semicolon_for_lambda'):
-                pos = warning.node.end_pos()
+                offset = warning.node.end_offset
             else:
-                pos = None
-            report(warning.node, visitor.warning, pos=pos, **warning.errargs)
+                offset = None
+            report(warning.node, visitor.warning, offset=offset, **warning.errargs)
     return onpush
 
 def _warn_or_declare(scope, name, type_, node, report):
@@ -583,7 +587,7 @@ def _warn_or_declare(scope, name, type_, node, report):
     if other and parent_scope == scope:
         # Only warn about duplications in this scope.
         # Other scopes will be checked later.
-        if other.kind == tok.FUNCTION and name in other.fn_args:
+        if other.kind == tok.NAME and other.opcode == op.ARGNAME:
             report(node, 'var_hides_arg', name=name)
         else:
             report(node, 'redeclared_var', name=name)
@@ -610,11 +614,15 @@ def _get_scope_checks(scope, report):
 
         @visitation.visit('push', tok.FUNCTION)
         def _push_func(self, node):
-            if node.fn_name:
+            if node.opcode in (None, op.CLOSURE) and node.fn_name:
                 _warn_or_declare(scopes[-1], node.fn_name, 'function', node, report)
             self._push_scope(node)
+            if node.opcode == op.NAMEDFUNOBJ and node.fn_name:
+                scopes[-1].add_declaration(node.fn_name, node, 'function')
             for var_name in node.fn_args:
-                scopes[-1].add_declaration(var_name, node, 'arg')
+                if scopes[-1].get_identifier(var_name.atom):
+                    report(var_name, 'duplicate_formal', name=var_name.atom)
+                scopes[-1].add_declaration(var_name.atom, var_name, 'arg')
 
         @visitation.visit('push', tok.LEXICALSCOPE, tok.WITH)
         def _push_scope(self, node):

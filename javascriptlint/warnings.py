@@ -12,8 +12,9 @@ For example:
     @lookfor(tok.NODEKIND, (tok.NODEKIND, op.OPCODE))
     def warning_name(node):
         if questionable:
-            raise LintWarning, node
+            raise LintWarning(node)
 """
+import itertools
 import re
 import sys
 import types
@@ -21,9 +22,10 @@ import types
 import util
 import visitation
 
-from spidermonkey import tok, op
+from jsengine.parser import kind as tok
+from jsengine.parser import op
 
-_ALL_TOKENS = tuple(filter(lambda x: x != tok.EOF, tok.__dict__.values()))
+_ALL_TOKENS = tok.__dict__.values()
 
 def _get_assigned_lambda(node):
     """ Given a node "x = function() {}", returns "function() {}".
@@ -53,6 +55,7 @@ warnings = {
     'use_of_label': 'use of label',
     'misplaced_regex': 'regular expressions should be preceded by a left parenthesis, assignment, colon, or comma',
     'assign_to_function_call': 'assignment to a function call',
+    'equal_as_assign': 'test for equality (==) mistyped as assignment (=)?',
     'ambiguous_else_stmt': 'the else statement could be matched with one of multiple if statements (use curly braces to indicate intent',
     'block_without_braces': 'block statement without curly braces',
     'ambiguous_nested_stmt': 'block statements containing block statements should use curly braces to resolve ambiguity',
@@ -70,6 +73,7 @@ warnings = {
     'leading_decimal_point': 'leading decimal point may indicate a number or an object member',
     'trailing_decimal_point': 'trailing decimal point may indicate a number or an object member',
     'octal_number': 'leading zeros make an octal number',
+    'trailing_comma': 'extra comma is not recommended in object initializers',
     'trailing_comma_in_array': 'extra comma is not recommended in array initializers',
     'useless_quotes': 'the quotation marks are unnecessary',
     'mismatch_ctrl_comments': 'mismatched control comment; "ignore" and "end" control comments must have a one-to-one correspondence',
@@ -97,14 +101,34 @@ warnings = {
     'anon_no_return_value': 'anonymous function does not always return value',
     'unsupported_version': 'JavaScript {version} is not supported',
     'incorrect_version': 'Expected /*jsl:content-type*/ control comment. The script was parsed with the wrong version.',
+    'for_in_missing_identifier': 'for..in should have identifier on left side',
+    'misplaced_function': 'unconventional use of function expression',
+    'function_name_missing': 'anonymous function should be named to match property name {name}',
+    'function_name_mismatch': 'function name {fn_name} does not match property name {prop_name}',
+    'trailing_whitespace': 'trailing whitespace',
+}
+
+errors = {
+    'e4x_deprecated': 'e4x is deprecated',
+    'semi_before_stmnt': 'missing semicolon before statement',
+    'syntax_error': 'syntax error',
+    'expected_tok': 'expected token: {token}',
+    'unexpected_char': 'unexpected character: {char}',
+    'unexpected_eof': 'unexpected end of file',
+    'io_error': '{error}',
 }
 
 def format_error(errname, **errargs):
-    errdesc = warnings[errname]
+    if errname in errors:
+       errdesc = errors[errname]
+    else:
+       errdesc = warnings[errname]
+
     try:
-        errdesc = re.sub(r"{(\w+)}", lambda match: errargs[match.group(1)], errdesc)
+        keyword = re.compile(r"{(\w+)}")
+        errdesc = keyword.sub(lambda match: errargs[match.group(1)], errdesc)
     except (TypeError, KeyError):
-        raise KeyError, 'Invalid keyword in error: ' + errdesc
+        raise KeyError('Invalid keyword in error %s: %s' % (errname, errdesc))
     return errdesc
 
 _visitors = []
@@ -115,6 +139,20 @@ def lookfor(*args):
 
         for arg in args:
             _visitors.append((arg, fn))
+    return decorate
+
+_visitor_classes = []
+def lookfor_class(*args):
+    def decorate(cls):
+        # Convert the class name to camel case
+        camelcase = re.sub('([A-Z])', r'_\1', cls.__name__).lower().lstrip('_')
+
+        cls.warning = camelcase.rstrip('_')
+        assert cls.warning in warnings, \
+                'Missing warning description: %s' % cls.warning
+
+        for arg in args:
+            _visitor_classes.append((arg, cls))
     return decorate
 
 class LintWarning(Exception):
@@ -186,6 +224,8 @@ def _get_exit_points(node):
             exit_points.add(None)
     elif node.kind == tok.BREAK:
         exit_points = set([node])
+    elif node.kind == tok.CONTINUE:
+        exit_points = set([node])
     elif node.kind == tok.WITH:
         exit_points = _get_exit_points(node.kids[-1])
     elif node.kind == tok.RETURN:
@@ -226,21 +266,29 @@ def _get_exit_points(node):
 
     return exit_points
 
+def _loop_has_unreachable_condition(node):
+    for exit_point in _get_exit_points(node):
+        if exit_point is None:
+            return False
+        if exit_point.kind == tok.CONTINUE:
+            return False
+    return True
+
 @lookfor((tok.EQOP, op.EQ))
 def comparison_type_conv(node):
     for kid in node.kids:
         if kid.kind == tok.PRIMARY and kid.opcode in (op.NULL, op.TRUE, op.FALSE):
-            raise LintWarning, kid
+            raise LintWarning(kid)
         if kid.kind == tok.NUMBER and not kid.dval:
-            raise LintWarning, kid
+            raise LintWarning(kid)
         if kid.kind == tok.STRING and not kid.atom:
-            raise LintWarning, kid
+            raise LintWarning(kid)
 
 @lookfor(tok.DEFAULT)
 def default_not_at_end(node):
     siblings = node.parent.kids
     if node.node_index != len(siblings)-1:
-        raise LintWarning, siblings[node.node_index+1]
+        raise LintWarning(siblings[node.node_index+1])
 
 @lookfor(tok.CASE)
 def duplicate_case_in_switch(node):
@@ -253,7 +301,7 @@ def duplicate_case_in_switch(node):
         if sibling.kind == tok.CASE:
             sibling_value = sibling.kids[0]
             if node_value.is_equivalent(sibling_value, True):
-                raise LintWarning, node
+                raise LintWarning(node)
 
 @lookfor(tok.SWITCH)
 def missing_default_case(node):
@@ -261,21 +309,21 @@ def missing_default_case(node):
     for case in cases.kids:
         if case.kind == tok.DEFAULT:
             return
-    raise LintWarning, node
+    raise LintWarning(node)
 
 @lookfor(tok.WITH)
 def with_statement(node):
-    raise LintWarning, node
+    raise LintWarning(node)
 
-@lookfor(tok.EQOP,tok.RELOP)
+@lookfor(tok.EQOP, tok.RELOP)
 def useless_comparison(node):
-    lvalue, rvalue = node.kids
-    if lvalue.is_equivalent(rvalue):
-        raise LintWarning, node
+    for lvalue, rvalue in itertools.combinations(node.kids, 2):
+        if lvalue.is_equivalent(rvalue):
+            raise LintWarning(node)
 
 @lookfor((tok.COLON, op.NAME))
 def use_of_label(node):
-    raise LintWarning, node
+    raise LintWarning(node)
 
 @lookfor((tok.OBJECT, op.REGEXP))
 def misplaced_regex(node):
@@ -291,12 +339,26 @@ def misplaced_regex(node):
         return # Allow in /re/.property
     if node.parent.kind == tok.RETURN:
         return # Allow for return values
-    raise LintWarning, node
+    raise LintWarning(node)
 
 @lookfor(tok.ASSIGN)
 def assign_to_function_call(node):
-    if node.kids[0].kind == tok.LP:
-        raise LintWarning, node
+    kid = node.kids[0]
+    # Unpack parens.
+    while kid.kind == tok.RP:
+       kid, = kid.kids
+    if kid.kind == tok.LP:
+        raise LintWarning(node)
+
+@lookfor((tok.ASSIGN, None))
+def equal_as_assign(node):
+    # Allow in VAR statements.
+    if node.parent.parent and node.parent.parent.kind == tok.VAR:
+        return
+
+    if not node.parent.kind in (tok.SEMI, tok.RESERVED, tok.RP, tok.COMMA,
+                                tok.ASSIGN):
+        raise LintWarning(node)
 
 @lookfor(tok.IF)
 def ambiguous_else_stmt(node):
@@ -312,13 +374,13 @@ def ambiguous_else_stmt(node):
             return
         # Else is only ambiguous in the first branch of an if statement.
         if tmp.parent.kind == tok.IF and tmp.node_index == 1:
-            raise LintWarning, else_
+            raise LintWarning(else_)
         tmp = tmp.parent
 
 @lookfor(tok.IF, tok.WHILE, tok.DO, tok.FOR, tok.WITH)
 def block_without_braces(node):
     if node.kids[1].kind != tok.LC:
-        raise LintWarning, node.kids[1]
+        raise LintWarning(node.kids[1])
 
 _block_nodes = (tok.IF, tok.WHILE, tok.DO, tok.FOR, tok.WITH)
 @lookfor(*_block_nodes)
@@ -331,7 +393,7 @@ def ambiguous_nested_stmt(node):
     # was inside a block statement without clarifying curlies.
     # (Otherwise, the node type would be tok.LC.)
     if node.parent.kind in _block_nodes:
-        raise LintWarning, node
+        raise LintWarning(node)
 
 @lookfor(tok.INC, tok.DEC)
 def inc_dec_within_stmt(node):
@@ -347,7 +409,7 @@ def inc_dec_within_stmt(node):
         tmp.parent.parent.kind == tok.FOR:
         return
 
-    raise LintWarning, node
+    raise LintWarning(node)
 
 @lookfor(tok.COMMA)
 def comma_separated_stmts(node):
@@ -357,12 +419,12 @@ def comma_separated_stmts(node):
     # This is an array
     if node.parent.kind == tok.RB:
         return
-    raise LintWarning, node
+    raise LintWarning(node)
 
 @lookfor(tok.SEMI)
 def empty_statement(node):
     if not node.kids[0]:
-        raise LintWarning, node
+        raise LintWarning(node)
 @lookfor(tok.LC)
 def empty_statement_(node):
     if node.kids:
@@ -373,7 +435,7 @@ def empty_statement_(node):
     # Some empty blocks are meaningful.
     if node.parent.kind in (tok.CATCH, tok.CASE, tok.DEFAULT, tok.SWITCH, tok.FUNCTION):
         return
-    raise LintWarning, node
+    raise LintWarning(node)
 
 @lookfor(tok.CASE, tok.DEFAULT)
 def missing_break(node):
@@ -387,7 +449,7 @@ def missing_break(node):
         return
     if None in _get_exit_points(case_contents):
         # Show the warning on the *next* node.
-        raise LintWarning, node.parent.kids[node.node_index+1]
+        raise LintWarning(node.parent.kids[node.node_index+1])
 
 @lookfor(tok.CASE, tok.DEFAULT)
 def missing_break_for_last_case(node):
@@ -396,16 +458,16 @@ def missing_break_for_last_case(node):
     case_contents = node.kids[1]
     assert case_contents.kind == tok.LC
     if None in _get_exit_points(case_contents):
-        raise LintWarning, node
+        raise LintWarning(node)
 
 @lookfor(tok.INC)
 def multiple_plus_minus(node):
     if node.node_index == 0 and node.parent.kind == tok.PLUS:
-        raise LintWarning, node
+        raise LintWarning(node)
 @lookfor(tok.DEC)
 def multiple_plus_minus_(node):
     if node.node_index == 0 and node.parent.kind == tok.MINUS:
-        raise LintWarning, node
+        raise LintWarning(node)
 
 @lookfor((tok.NAME, op.SETNAME))
 def useless_assign(node):
@@ -415,7 +477,7 @@ def useless_assign(node):
     elif node.parent.kind == tok.VAR:
         value = node.kids[0]
     if value and value.kind == tok.NAME and node.atom == value.atom:
-        raise LintWarning, node
+        raise LintWarning(node)
 
 @lookfor(tok.BREAK, tok.CONTINUE, tok.RETURN, tok.THROW)
 def unreachable_code(node):
@@ -426,12 +488,12 @@ def unreachable_code(node):
                 for variable in sibling.kids:
                     value, = variable.kids
                     if value:
-                        raise LintWarning, value
+                        raise LintWarning(value)
             elif sibling.kind == tok.FUNCTION:
                 # Functions are always declared.
                 pass
             else:
-                raise LintWarning, sibling
+                raise LintWarning(sibling)
 
 @lookfor(tok.FOR)
 def unreachable_code_(node):
@@ -440,69 +502,79 @@ def unreachable_code_(node):
     if preamble.kind == tok.RESERVED:
         pre, condition, post = preamble.kids
         if post:
-            if not None in _get_exit_points(code):
-                raise LintWarning, post
+            if _loop_has_unreachable_condition(code):
+                raise LintWarning(post)
 
 @lookfor(tok.DO)
 def unreachable_code__(node):
     # Warn if the do..while loop always exits.
     code, condition = node.kids
-    if not None in _get_exit_points(code):
-        raise LintWarning, condition
+    if _loop_has_unreachable_condition(code):
+        raise LintWarning(condition)
 
 #TODO: @lookfor(tok.IF)
 def meaningless_block(node):
     condition, if_, else_ = node.kids
     if condition.kind == tok.PRIMARY and condition.opcode in (op.TRUE, op.FALSE, op.NULL):
-        raise LintWarning, condition
+        raise LintWarning(condition)
 #TODO: @lookfor(tok.WHILE)
 def meaningless_blocK_(node):
     condition = node.kids[0]
     if condition.kind == tok.PRIMARY and condition.opcode in (op.FALSE, op.NULL):
-        raise LintWarning, condition
+        raise LintWarning(condition)
 @lookfor(tok.LC)
 def meaningless_block__(node):
     if node.parent and node.parent.kind == tok.LC:
-        raise LintWarning, node
+        raise LintWarning(node)
 
 @lookfor((tok.UNARYOP, op.VOID))
 def useless_void(node):
-    raise LintWarning, node
+    raise LintWarning(node)
 
 @lookfor((tok.LP, op.CALL))
 def parseint_missing_radix(node):
     if node.kids[0].kind == tok.NAME and node.kids[0].atom == 'parseInt' and len(node.kids) <= 2:
-        raise LintWarning, node
+        raise LintWarning(node)
 
 @lookfor(tok.NUMBER)
 def leading_decimal_point(node):
     if node.atom.startswith('.'):
-        raise LintWarning, node
+        raise LintWarning(node)
 
 @lookfor(tok.NUMBER)
 def trailing_decimal_point(node):
     if node.parent.kind == tok.DOT:
-        raise LintWarning, node
+        raise LintWarning(node)
     if node.atom.endswith('.'):
-        raise LintWarning, node
+        raise LintWarning(node)
 
 _octal_regexp = re.compile('^0[0-9]')
 @lookfor(tok.NUMBER)
 def octal_number(node):
     if _octal_regexp.match(node.atom):
-        raise LintWarning, node
+        raise LintWarning(node)
+
+@lookfor(tok.RC)
+def trailing_comma(node):
+    if node.end_comma:
+        # Warn on the last value in the dictionary.
+        last_item = node.kids[-1]
+        assert last_item.kind == tok.COLON
+        key, value = last_item.kids
+        raise LintWarning(value)
 
 @lookfor(tok.RB)
 def trailing_comma_in_array(node):
     if node.end_comma:
-        raise LintWarning, node
+        # Warn on the last value in the array.
+        raise LintWarning(node.kids[-1])
 
 @lookfor(tok.STRING)
 def useless_quotes(node):
     if node.node_index == 0 and node.parent.kind == tok.COLON:
         # Only warn if the quotes could safely be removed.
         if util.isidentifier(node.atom):
-            raise LintWarning, node
+            raise LintWarning(node)
 
 @lookfor(tok.SEMI)
 def want_assign_or_call(node):
@@ -518,13 +590,15 @@ def want_assign_or_call(node):
     # Ignore function calls.
     if child.kind == tok.LP and child.opcode == op.CALL:
         return
+    if child.kind == tok.STRING and child.atom == 'use strict':
+        return
     # Allow new function() { } as statements.
     if child.kind == tok.NEW:
         # The first kid is the constructor, followed by its arguments.
         grandchild = child.kids[0]
         if grandchild.kind == tok.FUNCTION:
             return
-    raise LintWarning, child
+    raise LintWarning(child)
 
 def _check_return_value(node):
     name = node.fn_name or '(anonymous function)'
@@ -541,7 +615,7 @@ def _check_return_value(node):
     if filter(is_return_with_val, exit_points):
         # If the function returns a value, find all returns without a value.
         returns = filter(is_return_without_val, exit_points)
-        returns.sort(key=lambda node: node.start_pos())
+        returns.sort(key=lambda node: node.start_offset)
         if returns:
             raise LintWarning(returns[0], name=name)
         # Warn if the function sometimes exits naturally.
@@ -557,6 +631,114 @@ def no_return_value(node):
 def anon_no_return_value(node):
     if not node.fn_name:
         _check_return_value(node)
+
+@lookfor((tok.FOR, op.FORIN))
+def for_in_missing_identifier(node):
+    assert node.kids[0].kind == tok.IN
+    left, right = node.kids[0].kids
+    if not left.kind in (tok.VAR, tok.NAME):
+        raise LintWarning(left)
+
+@lookfor(tok.FUNCTION)
+def misplaced_function(node):
+    # Ignore function statements.
+    if node.opcode in (None, op.CLOSURE):
+        return
+
+    # Ignore parens.
+    parent = node.parent
+    while parent.kind == tok.RP:
+        parent = parent.parent
+
+    # Allow x = x || ...
+    if parent.kind == tok.OR and len(parent.kids) == 2 and \
+            node is parent.kids[-1]:
+        parent = parent.parent
+
+    if parent.kind == tok.NAME and parent.opcode == op.SETNAME:
+        return # Allow in var statements
+    if parent.kind == tok.ASSIGN and parent.opcode == op.NOP:
+        return # Allow in assigns
+    if parent.kind == tok.COLON and parent.parent.kind == tok.RC:
+        return # Allow in object literals
+    if parent.kind == tok.LP and parent.opcode in (op.CALL, op.SETCALL):
+        return # Allow in parameters
+    if parent.kind == tok.RETURN:
+        return # Allow for return values
+    if parent.kind == tok.NEW:
+        return # Allow as constructors
+    if parent.kind == tok.RB:
+        return # Allow in arrays
+    raise LintWarning(node)
+
+def _get_function_property_name(node):
+    # Ignore function statements.
+    if node.opcode in (None, op.CLOSURE):
+        return
+
+    # Ignore parens.
+    parent = node.parent
+    while parent.kind == tok.RP:
+        parent = parent.parent
+
+    # Allow x = x || ...
+    if parent.kind == tok.OR and len(parent.kids) == 2 and \
+            node is parent.kids[-1]:
+        parent = parent.parent
+
+    # Var assignment.
+    if parent.kind == tok.NAME and parent.opcode == op.SETNAME:
+        return parent.atom
+
+    # Assignment.
+    if parent.kind == tok.ASSIGN and parent.opcode == op.NOP:
+        if parent.kids[0].kind == tok.NAME and \
+           parent.kids[0].opcode == op.SETNAME:
+            return parent.kids[0].atom
+        if parent.kids[0].kind == tok.DOT and \
+           parent.kids[0].opcode == op.SETPROP:
+            return parent.kids[0].atom
+        return '<error>'
+
+    # Object literal.
+    if parent.kind == tok.COLON and parent.parent.kind == tok.RC:
+        return parent.kids[0].atom
+
+def _get_expected_function_name(node, decorate):
+    name = _get_function_property_name(node)
+    if name and decorate:
+        return '__%s' % name
+    return name
+
+@lookfor_class(tok.FUNCTION)
+class FunctionNameMissing(object):
+    def __init__(self, conf):
+        self._decorate = conf['decorate_function_name_warning']
+
+    def __call__(self, node):
+        if node.fn_name:
+            return
+
+        expected_name = _get_expected_function_name(node, self._decorate)
+        if not expected_name is None:
+            raise LintWarning(node, name=expected_name)
+
+@lookfor_class(tok.FUNCTION)
+class FunctionNameMismatch(object):
+    def __init__(self, conf):
+        self._decorate = conf['decorate_function_name_warning']
+
+    def __call__(self, node):
+        if not node.fn_name:
+            return
+
+        expected_name = _get_expected_function_name(node, self._decorate)
+        if expected_name is None:
+            return
+
+        if expected_name != node.fn_name:
+            raise LintWarning(node, fn_name=node.fn_name,
+                              prop_name=expected_name)
 
 @lookfor()
 def mismatch_ctrl_comments(node):
@@ -594,7 +776,7 @@ def duplicate_formal(node):
 def missing_semicolon(node):
     if node.no_semi:
         if not _get_assigned_lambda(node):
-            raise LintWarning, node
+            raise LintWarning(node)
 
 @lookfor(*_ALL_TOKENS)
 def missing_semicolon_for_lambda(node):
@@ -603,7 +785,7 @@ def missing_semicolon_for_lambda(node):
         # statements, so use the position of the lambda instead.
         lambda_ = _get_assigned_lambda(node)
         if lambda_:
-            raise LintWarning, lambda_
+            raise LintWarning(lambda_)
 
 @lookfor()
 def ambiguous_newline(node):
@@ -621,9 +803,13 @@ def partial_option_explicit(node):
 def dup_option_explicit(node):
     pass
 
-def make_visitors():
+def make_visitors(conf):
+    all_visitors = list(_visitors)
+    for kind, klass in _visitor_classes:
+        all_visitors.append((kind, klass(conf=conf)))
+
     visitors = {}
-    for kind, func in _visitors:
+    for kind, func in all_visitors:
         try:
             visitors[kind].append(func)
         except KeyError:

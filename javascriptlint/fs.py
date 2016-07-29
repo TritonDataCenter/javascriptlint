@@ -2,8 +2,8 @@
 import codecs
 import os
 
-def readfile(path):
-    file = codecs.open(path, 'r', 'utf-8')
+def readfile(path, encoding):
+    file = codecs.open(path, 'r', encoding)
     contents = file.read()
     if contents and contents[0] == unicode(codecs.BOM_UTF8, 'utf8'):
         contents = contents[1:]

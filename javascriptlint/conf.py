@@ -4,14 +4,22 @@ import unittest
 
 import fs
 import util
+import version
 import warnings
+
+_DISABLED_WARNINGS = (
+   'block_without_braces',
+   'function_name_missing',
+   'function_name_mismatch',
+   'trailing_whitespace',
+)
 
 def _getwarningsconf():
     lines = []
     for name in sorted(warnings.warnings.keys()):
         message = warnings.warnings[name]
         sign = '+'
-        if name == 'block_without_braces':
+        if name in _DISABLED_WARNINGS:
             sign = '-'
         assert len(name) < 29
         lines.append(sign + name.ljust(29) + '# ' + message)
@@ -87,6 +95,12 @@ DEFAULT_CONF = """\
 #+default-type text/javascript;version=1.5
 #+default-type text/javascript;e4x=1
 
+### 
+# Some browsers pollute the namespace when using the "function_name_missing"
+# or "function_name_mismatch" warning. Enable this option to require a
+# double-underscore prefix.
+#+decorate_function_name_warning
+
 ### Files
 # Specify which files to lint
 # Use "+recurse" to enable recursion (disabled by default).
@@ -94,7 +108,7 @@ DEFAULT_CONF = """\
 # or "+process Folder\Path\*.htm".
 #
 """ % {
-    'version': '', # TODO
+    'version': version.version,
     'warnings': _getwarningsconf(),
 }
 
@@ -113,7 +127,7 @@ class DeprecatedSetting(Setting):
     wants_parm = False
     value = None
     def load(self, enabled):
-        raise ConfError, 'This setting is deprecated.'
+        raise ConfError('This setting is deprecated.')
 
 class BooleanSetting(Setting):
     wants_parm = False
@@ -128,7 +142,7 @@ class StringSetting(Setting):
         self.value = default
     def load(self, enabled, parm):
         if not enabled:
-            raise ConfError, 'Expected +.'
+            raise ConfError('Expected +.')
         self.value = parm
 
 class DeclareSetting(Setting):
@@ -137,7 +151,7 @@ class DeclareSetting(Setting):
         self.value = []
     def load(self, enabled, parm):
         if not enabled:
-            raise ConfError, 'Expected +.'
+            raise ConfError('Expected +.')
         self.value.append(parm)
 
 class ProcessSetting(Setting):
@@ -156,15 +170,25 @@ class JSVersionSetting(Setting):
     value = util.JSVersion.default()
     def load(self, enabled, parm):
         if not enabled:
-            raise ConfError, 'Expected +.'
-        
+            raise ConfError('Expected +.')
+
         self.value = util.JSVersion.fromtype(parm)
         if not self.value:
-            raise ConfError, 'Invalid JavaScript version: %s' % parm
+            raise ConfError('Invalid JavaScript version: %s' % parm)
+
+class ConfSetting(Setting):
+    wants_parm = True
+    wants_dir = True
+    def __init__(self, conf):
+        self._conf = conf
+    def load(self, enabled, parm, dir):
+        if dir:
+            parm = os.path.join(dir, parm)
+        self._conf.loadfile(parm)
 
 class Conf:
     def __init__(self):
-        recurse = BooleanSetting(False) 
+        recurse = BooleanSetting(False)
         self._settings = {
             'recurse': recurse,
             'output-format': StringSetting('__FILE__(__LINE__): __ERROR__'),
@@ -176,18 +200,21 @@ class Conf:
             'context': BooleanSetting(True),
             'process': ProcessSetting(recurse),
             'default-version': JSVersionSetting(),
+            'conf': ConfSetting(self),
             # SpiderMonkey warnings
             'no_return_value': BooleanSetting(True),
             'equal_as_assign': BooleanSetting(True),
-            'anon_no_return_value': BooleanSetting(True)
+            'anon_no_return_value': BooleanSetting(True),
+            'decorate_function_name_warning': BooleanSetting(False),
         }
         for name in warnings.warnings:
             self._settings[name] = BooleanSetting(True)
-        self.loadline('-block_without_braces')
+        for warning in _DISABLED_WARNINGS:
+           self.loadline('-%s' % warning)
 
     def loadfile(self, path):
         path = os.path.abspath(path)
-        conf = fs.readfile(path)
+        conf = fs.readfile(path, 'utf-8')
         try:
             self.loadtext(conf, dir=os.path.dirname(path))
         except ConfError, error:
@@ -220,7 +247,7 @@ class Conf:
         elif line.startswith('-'):
             enabled = False
         else:
-            raise ConfError, 'Expected + or -.'
+            raise ConfError('Expected + or -.')
         line = line[1:]
 
         # Parse the key/parms
@@ -228,14 +255,17 @@ class Conf:
         parm = line[len(name):].lstrip()
 
         # Load the setting
-        setting = self._settings[name]
+        try:
+            setting = self._settings[name]
+        except KeyError:
+            raise ConfError('Unrecognized setting: %s' % name)
         args = {
             'enabled': enabled
         }
         if setting.wants_parm:
             args['parm'] = parm
         elif parm:
-            raise ConfError, 'The %s setting does not expect a parameter.' % name
+            raise ConfError('The %s setting does not expect a parameter.' % name)
         if setting.wants_dir:
             args['dir'] = dir
         setting.load(**args)
