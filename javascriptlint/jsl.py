@@ -27,8 +27,8 @@ def _dump(paths):
 def _lint(paths, conf_, printpaths):
     def lint_error(path, line, col, errname, errdesc):
         _lint_results['warnings'] = _lint_results['warnings'] + 1
-        print util.format_error(conf_['output-format'], path, line, col,
-                                      errname, errdesc)
+        print >> sys.stderr, util.format_error(conf_['output-format'],
+                                  path, line, col, errname, errdesc)
     lint.lint_files(paths, lint_error, conf=conf_, printpaths=printpaths)
 
 def _resolve_paths(path, recurse):
