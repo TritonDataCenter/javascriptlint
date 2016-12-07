@@ -22,7 +22,7 @@ PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; print(sys.real_prefix)" || $(PY_P
 PY_VERSION=$(shell $(PY_PYTHON) -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
 ifeq ($(BUILDOS),Darwin)
 	PY_ARCH=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "x86_64" or "i386")')
-	SOLDFLAGS += $(PY_PREFIX)/Python
+	SOLDFLAGS += -lpython$(PY_VERSION)
 	CC=gcc -arch $(PY_ARCH)
 else
 	PY_BIT=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "64" or "32")')
@@ -40,7 +40,7 @@ $(BUILDDIR) $(INSTALLDIRS):
 $(OBJECTS): spidermonkey/src/build/libjs.a spidermonkey/src/build/js_operating_system.h
 
 $(SOFILE): $(OBJECTS)
-	$(CC) $(CFLAGS) $(SOLDFLAGS) $(LDFLAGS) $(OBJECTS) -Lspidermonkey/src/build -ljs -o $@
+	$(CC) $(CFLAGS) $(SOLDFLAGS) $(LDFLAGS) $(OBJECTS) -L$(PY_PREFIX)/lib -Lspidermonkey/src/build -ljs -o $@
 
 $(BUILDDIR)/%.o: javascriptlint/pyspidermonkey/%.c | $(BUILDDIR)
 	$(CC) -o $@ -c $(CFLAGS) $(CPPFLAGS) $<
