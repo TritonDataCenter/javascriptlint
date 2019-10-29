@@ -16,8 +16,11 @@ CPPFLAGS += -DNDEBUG -D_REENTRANT					\
 	-Ispidermonkey/src -Ispidermonkey/src/build			\
 	-I/usr/include							\
 
-
-PY_PYTHON=$(shell python -c "import sys; print(sys.executable)")
+PY_EXEC=$(shell which python2)
+ifndef PY_EXEC
+	PY_EXEC=python
+endif
+PY_PYTHON=$(shell $(PY_EXEC) -c "import sys; print(sys.executable)")
 PY_PREFIX=$(shell $(PY_PYTHON) -c "import sys; print(sys.real_prefix)" || $(PY_PYTHON) -c "import sys; print(sys.prefix)")
 PY_VERSION=$(shell $(PY_PYTHON) -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
 ifeq ($(BUILDOS),Darwin)
