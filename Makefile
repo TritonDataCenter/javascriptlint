@@ -16,7 +16,12 @@ CPPFLAGS += -DNDEBUG -D_REENTRANT					\
 	-Ispidermonkey/src -Ispidermonkey/src/build			\
 	-I/usr/include							\
 
-PY_EXEC=$(shell which python2)
+# Try to get a Python 2. On macOS there isn't a "python2". On
+# SmartOS pkgsrc 2019Q2 minimal "python" is v3.
+PY_EXEC=$(shell which python2.7)
+ifndef PY_EXEC
+	PY_EXEC=$(shell which python2)
+endif
 ifndef PY_EXEC
 	PY_EXEC=python
 endif
