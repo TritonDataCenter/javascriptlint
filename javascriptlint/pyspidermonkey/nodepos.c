@@ -73,7 +73,7 @@ PyTypeObject NodePosType = {
     0,                         /*tp_print*/
     0,                         /*tp_getattr*/
     0,                         /*tp_setattr*/
-    (cmpfunc)NodePos_compare,  /*tp_compare*/
+    (newfunc)NodePos_compare,  /*tp_compare*/
     0,                         /*tp_repr*/
     0,                         /*tp_as_number*/
     0,                         /*tp_as_sequence*/

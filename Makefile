@@ -32,9 +32,6 @@ ifeq ($(BUILDOS),Darwin)
 	PY_ARCH=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "x86_64" or "i386")')
 	SOLDFLAGS += -lpython$(PY_VERSION)
 	CC=gcc -arch $(PY_ARCH)
-else
-	PY_BIT=$(shell $(PY_PYTHON) -c 'import sys; print (sys.maxint > 2**32 and "64" or "32")')
-	CFLAGS += -m$(PY_BIT)
 endif
 
 CPPFLAGS += -I$(PY_PREFIX)/include/python$(PY_VERSION)
