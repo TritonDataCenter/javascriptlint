@@ -18,8 +18,25 @@ CPPFLAGS += -DNDEBUG -D_REENTRANT					\
 
 # Try to get a Python 2. On macOS there isn't a "python2". On
 # SmartOS pkgsrc 2019Q2 minimal "python" is v3.
-PY_EXEC=$(shell which python2.7)
+ifeq ($(BUILDOS),Darwin)
+#	As of macOS 12, we can't use the system python anymore, so take the
+#	first one that's not in /usr/bin.
+	PY_EXEC=$(shell which -a python2.7 | grep -v /usr/bin/python | head -1)
+else
+	PY_EXEC=$(shell which python2.7)
+endif
 ifndef PY_EXEC
+#	If we get here, there wasn't a python2.7 binary. It's getting pretty
+#	untennable at this point, because even as it is, python2.7 isn't
+#	supported anymore, and anything older than that is even worse off, but
+#	at least we won't break anybody who was previously working.
+#
+#	For macOS 12 that gets here, this will pick up the system python which
+#	will refuse to link later because linking against system python is
+#	no longer allowed. That means that while it's still broken, there's
+#	nothing we can do about it and we're no worse off than before. If you're
+#	reading this trying to figure out how to compile this on macOS 12+,
+#	you need to install your own python2.7 and have that in your PATH.
 	PY_EXEC=$(shell which python2)
 endif
 ifndef PY_EXEC
