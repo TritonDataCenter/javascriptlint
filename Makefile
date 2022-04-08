@@ -21,11 +21,11 @@ CPPFLAGS += -DNDEBUG -D_REENTRANT					\
 ifeq ($(BUILDOS),Darwin)
 #	As of macOS 12, we can't use the system python anymore, so take the
 #	first one that's not in /usr/bin.
-	PY_EXEC=$(shell which -a python2.7 | grep -v /usr/bin/python | head -1)
+	PY_EXEC=$(shell type -a --path python2.7 | grep -v /usr/bin/python | head -1)
 else
-	PY_EXEC=$(shell which python2.7)
+	PY_EXEC=$(shell /usr/bin/command -v python2.7)
 endif
-ifndef PY_EXEC
+ifeq ($(PY_EXEC),)
 #	If we get here, there wasn't a python2.7 binary. It's getting pretty
 #	untennable at this point, because even as it is, python2.7 isn't
 #	supported anymore, and anything older than that is even worse off, but
@@ -37,9 +37,9 @@ ifndef PY_EXEC
 #	nothing we can do about it and we're no worse off than before. If you're
 #	reading this trying to figure out how to compile this on macOS 12+,
 #	you need to install your own python2.7 and have that in your PATH.
-	PY_EXEC=$(shell which python2)
+	PY_EXEC=$(shell /usr/bin/command -v python2)
 endif
-ifndef PY_EXEC
+ifeq ($(PY_EXEC),)
 	PY_EXEC=python
 endif
 PY_PYTHON=$(shell $(PY_EXEC) -c "import sys; print(sys.executable)")
